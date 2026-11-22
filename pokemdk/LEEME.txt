@@ -1,0 +1,31 @@
+POKEMDK — versión independiente (app instalable + online sin cuentas)
+================================================================================
+
+Archivos (súbelos TODOS juntos, en la misma carpeta):
+  index.html · peerjs.min.js · manifest.webmanifest · sw.js · icon-192.png · icon-512.png
+
+PUBLICARLA GRATIS CON GITHUB PAGES (unos 5 minutos)
+ 1. Crea una cuenta gratuita en https://github.com (solo la necesitas tú).
+ 2. Pulsa «New repository». Nombre: pokemdk. Márcalo como «Public» y crea el repositorio.
+ 3. Pulsa «uploading an existing file», arrastra los 6 archivos y pulsa «Commit changes».
+ 4. Ve a Settings → Pages. En «Branch» elige «main» y «/ (root)» y pulsa «Save».
+ 5. En 1–2 minutos tu app estará en:  https://TU-USUARIO.github.io/pokemdk/
+    Ese es el enlace que compartes con tu rival.
+
+INSTALARLA COMO APP
+ · Android (Chrome): abre el enlace → menú ⋮ → «Instalar aplicación».
+ · iPhone (Safari): abre el enlace → botón Compartir → «Añadir a pantalla de inicio».
+ · Ordenador (Chrome/Edge): icono de instalar en la barra de direcciones.
+ Funciona sin conexión para jugar contra la CPU y editar; el online necesita internet.
+
+PASAR TUS PERSONAJES DESDE CLAUDE
+ 1. En la página de Claude: Personajes → «Exportar» (se descarga arena-combates.json).
+ 2. En POKEMDK: Personajes → «Importar» → elige ese archivo → «Reemplazar todo».
+
+JUGAR ONLINE
+ · Tú: Combate → «🌐 Online» → «Crear partida». Te sale un código de 4 letras.
+ · Tu rival: abre el mismo enlace → «🌐 Online» → escribe el código → elige su equipo entre tus personajes.
+ · Tú pulsas «¡Empezar combate!». Tus imágenes, vídeos y SONIDOS se envían a tu rival al conectarse.
+ · La conexión va directa entre los dos dispositivos. Para encontrarse usa el servidor público
+   gratuito de PeerJS; si alguna vez no conecta, espera un poco o prueba con otra red (algunas
+   wifis de empresa o redes móviles muy restrictivas bloquean este tipo de conexión).
