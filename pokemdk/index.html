@@ -45,6 +45,18 @@ main{max-width:1100px;margin:0 auto;padding:0 22px 40px}
 
 .panel{background:var(--panel);border:2px solid var(--line);border-radius:16px;padding:22px}
 .panel h2{font-family:var(--pixel);font-size:16px;margin:0 0 18px;color:#fff;line-height:1.5}
+body.sel-on{background:transparent}
+#selBg{position:fixed;inset:0;z-index:-1;overflow:hidden;container-type:size;background:linear-gradient(var(--c1),var(--c2));pointer-events:none}
+#selBg .ts-bg,#selBg .ts-dim{position:absolute;inset:0;width:100%;height:100%}
+#setup{color:var(--seltext,inherit)}
+#setup h2{color:var(--seltext,#fff)}
+#selLogo{display:flex;margin:-4px 0 14px}
+#selLogo img{max-width:100%;max-height:220px;object-fit:contain;filter:drop-shadow(0 6px 10px rgba(0,0,0,.35))}
+.modal.side{background:transparent;place-items:end;pointer-events:none;padding:12px}
+.modal.side .card{pointer-events:auto;width:min(440px,100%);max-height:calc(100vh - 24px);overflow-y:auto;box-shadow:0 10px 40px rgba(0,0,0,.6)}
+@media (max-width:820px){.modal.side{place-items:end stretch}.modal.side .card{width:100%;max-height:55vh}}
+.mlist{display:flex;flex-direction:column;gap:10px;margin-top:6px}
+.mlist .file-btn{align-self:flex-start}
 .setup-h{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
 .setup-h .btn{font-family:var(--sans)}
 .btn{border:2px solid var(--line);background:#33375a;color:#fff;border-radius:10px;padding:9px 14px;font-weight:800;font-size:14px;display:inline-flex;align-items:center;justify-content:center;gap:6px}
@@ -411,7 +423,8 @@ body.ts-lock{overflow:hidden}
   <!-- ============ COMBATE ============ -->
   <section id="view-battle">
     <div id="setup" class="panel">
-      <h2 class="setup-h">Prepara el combate <button class="btn sm" id="menuMusicBtn" type="button" title="Elegir la música de esta pantalla">🎵 Música</button></h2>
+      <div id="selLogo" hidden></div>
+      <h2 class="setup-h"><span id="selTitle">Prepara el combate</span><span class="arow"><button class="btn sm" id="selSkinBtn" type="button" title="Cambiar colores, fondo y logo de esta pantalla">🎨 Personalizar</button><button class="btn sm" id="menuMusicBtn" type="button" title="Elegir la música de esta pantalla">🎵 Música</button></span></h2>
       <div class="mode" id="modeRow">
         <button data-mode="cpu" class="on">🤖 Contra la CPU</button>
         <button data-mode="pvp">🎮 2 jugadores (mismo dispositivo)</button>
@@ -499,6 +512,7 @@ body.ts-lock{overflow:hidden}
   <section id="view-title" hidden><div id="tForm" class="t-wrap"></div></section>
 </main>
 
+<div id="selBg" hidden></div>
 <div id="titleScr" hidden></div>
 <div class="modal" id="modal" hidden><div class="card" id="modalCard"></div></div>
 <div class="toast" id="toast"></div>
@@ -1347,6 +1361,21 @@ function normStatusCfg(s = {}) {
   return o;
 }
 const APP_TITLE = 'POKEMDK';
+function normList(arr) {
+  return (Array.isArray(arr) ? arr : []).filter(x => x && refOr(x.ref)).map(x => ({ ref: refOr(x.ref), refTrim: normTrim(x.refTrim) })).slice(0, 40);
+}
+function normSel(s = {}) {
+  if (!s || typeof s !== 'object') s = {};
+  const col = (v, d) => /^#[0-9a-f]{6}$/i.test(v || '') ? v : d;
+  return {
+    bg: refOr(s.bg), bgVideo: refOr(s.bgVideo), pixel: !!s.pixel, dim: num(s.dim, 25, 0, 90),
+    c1: col(s.c1, '#33386a'), c2: col(s.c2, '#1d1f33'), fx: oneOf(s.fx, ['none', 'rays', 'stars'], 'none'),
+    panel: col(s.panel, '#272a45'), panelAlpha: num(s.panelAlpha, 100, 0, 100), line: col(s.line, '#3b3f63'),
+    accent: col(s.accent, '#ffbe0b'), text: col(s.text, '#eef0ff'),
+    title: typeof s.title === 'string' ? s.title.slice(0, 40) : 'Prepara el combate', showTitle: s.showTitle !== false,
+    logo: refOr(s.logo), logoSize: num(s.logoSize, 45, 10, 100), logoPos: oneOf(s.logoPos, ['left', 'center', 'right'], 'center')
+  };
+}
 function normTitle(t = {}) {
   if (!t || typeof t !== 'object') t = {};
   const s = (v, d, n) => typeof v === 'string' ? v.slice(0, n) : d;
@@ -1361,7 +1390,7 @@ function normTitle(t = {}) {
     bg: 'bg' in t ? refOr(t.bg) : 'art:mdkbg', pixel: 'pixel' in t ? !!t.pixel : true, pos: oneOf(t.pos, ['top', 'center'], 'top'), bgVideo: refOr(t.bgVideo), c1: col(t.c1, '#1b1f4a'), c2: col(t.c2, '#6a1b9a'),
     fx: oneOf(t.fx, ['rays', 'stars', 'none'], 'none'), dim: num(t.dim, 15, 0, 80),
     fighters: oneOf(t.fighters, ['random', 'pick', 'none'], 'none'), f1: typeof t.f1 === 'string' ? t.f1 : '', f2: typeof t.f2 === 'string' ? t.f2 : '',
-    music: 'music' in t ? refOr(t.music) : 'art:mdkmusic', musicTrim: normTrim(t.musicTrim), synth: t.synth !== false,
+    musics: Array.isArray(t.musics) ? normList(t.musics) : 'music' in t ? normList([{ ref: t.music, refTrim: t.musicTrim }]) : [{ ref: 'art:mdkmusic', refTrim: null }], synth: t.synth !== false,
     pressSound: refOr(t.pressSound), pressSoundTrim: normTrim(t.pressSoundTrim),
     exit: oneOf(t.exit, ['flash', 'fade', 'zoom'], 'flash')
   };
@@ -1374,8 +1403,9 @@ function normSettings(s = {}) {
     waitAudio: s.waitAudio !== false,
     status: normStatusCfg(s.status),
     winMusic: refOr(s.winMusic), winMusicTrim: normTrim(s.winMusicTrim),
-    menuMusic: refOr(s.menuMusic), menuMusicTrim: normTrim(s.menuMusicTrim),
+    menuMusics: Array.isArray(s.menuMusics) ? normList(s.menuMusics) : normList([{ ref: s.menuMusic, refTrim: s.menuMusicTrim }]),
     title: normTitle(s.title),
+    sel: normSel(s.sel),
     muted: !!s.muted
   };
 }
@@ -1535,7 +1565,7 @@ function startSynth() {
 }
 const Music = {
   el: null, synth: null, mult: 1,
-  play(ref, trim) {
+  play(ref, trim, onEnd) {
     this.stop();
     if (S.settings.muted) return;
     if (ref && src(ref)) {
@@ -1543,16 +1573,36 @@ const Music = {
       const a = this.el = new Audio(src(ref));
       this.mult = t.vol ?? 1;
       a.volume = clamp(S.settings.musicVol * this.mult, 0, 1);
-      a.addEventListener('timeupdate', () => { if (en > st && a.currentTime >= en) a.currentTime = st; });
-      a.addEventListener('ended', () => { a.currentTime = st; a.play().catch(() => {}); });
+      let done = false;
+      const fin = () => { if (done) return; done = true; a.pause(); onEnd(); };
+      a.addEventListener('timeupdate', () => { if (en > st && a.currentTime >= en) { if (onEnd) fin(); else a.currentTime = st; } });
+      a.addEventListener('ended', () => { if (onEnd) fin(); else { a.currentTime = st; a.play().catch(() => {}); } });
+      if (onEnd) a.addEventListener('error', () => setTimeout(fin, 300));
       if (st) a.addEventListener('loadedmetadata', () => { try { a.currentTime = st; } catch (e) {} }, { once: true });
       a.play().catch(() => {});
     } else if (S.settings.defaultMusic) {
       try { this.synth = startSynth(); } catch (e) {}
     }
   },
+  /* lista de canciones: suena una al azar y, al acabar, otra al azar */
+  playList(list, kind) {
+    this.stop();
+    list = (list || []).filter(x => x && x.ref && src(x.ref));
+    if (S.settings.muted || !list.length) return false;
+    const tok = {};
+    const next = () => {
+      if (this.tok !== tok) return;
+      let i = Math.floor(Math.random() * list.length);
+      if (list.length > 1 && i === this.lastIdx) i = (i + 1) % list.length;
+      this.lastIdx = i;
+      this.play(list[i].ref, list[i].refTrim, next);
+      this.tok = tok; this.kind = kind;
+    };
+    this.tok = tok; next();
+    return true;
+  },
   stop() {
-    this.kind = null;
+    this.kind = null; this.tok = null;
     if (this.el) { this.el.pause(); this.el = null; }
     if (this.synth) { this.synth.stop(); this.synth = null; }
   },
@@ -1580,8 +1630,106 @@ function stopWinMusic() {
 }
 function stopBattleSound() { Music.stop(); const v = $('#arena video.bgvid'); if (v) v.muted = true; }
 function stopAllMusic() { stopBattleSound(); stopWinMusic(); }
+/* aspecto de la pantalla de selección */
+function applySelSkin() {
+  const c = S.settings.sel, bgEl = $('#selBg'), setup = $('#setup');
+  const show = onSetupScreen();
+  /* fondo de página */
+  const key = JSON.stringify([c.bg, c.bgVideo, c.pixel, c.fx]);
+  if (bgEl._key !== key) {
+    bgEl._key = key;
+    const vid = c.bgVideo && src(c.bgVideo);
+    bgEl.innerHTML = (vid ? `<video class="ts-bg" src="${esc(vid)}" autoplay muted loop playsinline></video>` : c.bg ? `<img class="ts-bg${c.pixel ? ' pix' : ''}" src="${esc(src(c.bg))}" alt="">` : '')
+      + '<div class="ts-dim"></div>' + (c.fx === 'rays' ? '<div class="ts-rays"></div>' : c.fx === 'stars' ? `<div class="ts-stars">${tsStars()}</div>` : '');
+  }
+  bgEl.style.cssText = `--c1:${c.c1};--c2:${c.c2};--dim:${c.dim / 100}`;
+  if (bgEl.hidden !== !show) bgEl.hidden = !show;
+  document.body.classList.toggle('sel-on', show);
+  const v = $('video', bgEl); if (v) { if (show) v.play().catch(() => {}); else v.pause(); }
+  /* panel */
+  setup.style.setProperty('--accent', c.accent);
+  setup.style.setProperty('--line', c.line);
+  setup.style.setProperty('--seltext', c.text);
+  setup.style.background = `color-mix(in srgb, ${c.panel} ${c.panelAlpha}%, transparent)`;
+  setup.style.backdropFilter = c.panelAlpha < 100 ? 'blur(3px)' : '';
+  $('#selTitle').textContent = c.title;
+  $('#selTitle').style.display = c.showTitle ? '' : 'none';
+  const lg = $('#selLogo');
+  if (lg.hidden !== !c.logo) lg.hidden = !c.logo;
+  if (c.logo) {
+    lg.style.justifyContent = { left: 'flex-start', center: 'center', right: 'flex-end' }[c.logoPos];
+    if (lg._ref !== c.logo) { lg._ref = c.logo; lg.innerHTML = `<img src="${esc(src(c.logo))}" alt="">`; }
+    $('img', lg).style.width = c.logoSize + '%';
+  }
+}
+new MutationObserver(() => applySelSkin()).observe(document.body, { subtree: true, attributes: true, attributeFilter: ['hidden'] });
+function renderSelEditor() {
+  const c = S.settings.sel;
+  const colr = (k, label) => `<label>${label}<input type="color" value="${c[k]}" data-sel="${k}"></label>`;
+  $('#selBox').innerHTML = `
+    <div class="sec-t">Título y logo</div>
+    <div class="fields">
+      <label class="full">Título<input type="text" maxlength="40" value="${esc(c.title)}" data-sel="title"></label>
+      <label class="check full"><input type="checkbox" data-sel="showTitle" ${c.showTitle ? 'checked' : ''}> Mostrar el título</label>
+    </div>
+    <div class="imgrow" style="margin:10px 0">
+      ${imgSlot('sel:logo', c.logo, 'Logo (PNG)', { optional: true })}
+      <div class="fields">
+        ${statField('data-sel', 'logoSize', 'Tamaño del logo', 10, 100, c.logoSize, '%')}
+        <label>Posición<select data-sel="logoPos">${opt('left', c.logoPos, 'Izquierda')}${opt('center', c.logoPos, 'Centro')}${opt('right', c.logoPos, 'Derecha')}</select></label>
+      </div>
+    </div>
+    <div class="sec-t">Colores del panel</div>
+    <div class="fields">
+      ${colr('panel', 'Fondo del panel')}
+      ${colr('line', 'Bordes')}
+      ${colr('accent', 'Color principal (botones, selección)')}
+      ${colr('text', 'Texto')}
+      ${statField('data-sel', 'panelAlpha', 'Opacidad del panel', 0, 100, c.panelAlpha, '%')}
+    </div>
+    <div class="sec-t" style="margin-top:12px">Fondo de la pantalla</div>
+    <div class="imgrow" style="margin-bottom:10px">
+      ${imgSlot('sel:bg', c.bg, 'Imagen o vídeo de fondo', { optional: true })}
+      <div class="fields">
+        ${colr('c1', 'Color de arriba')}
+        ${colr('c2', 'Color de abajo')}
+        <label>Efecto<select data-sel="fx">${opt('none', c.fx, 'Ninguno')}${opt('rays', c.fx, 'Rayos girando')}${opt('stars', c.fx, 'Estrellas')}</select></label>
+        ${statField('data-sel', 'dim', 'Oscurecer el fondo', 0, 90, c.dim, '%')}
+        <label class="check full"><input type="checkbox" data-sel="pixel" ${c.pixel ? 'checked' : ''}> Estilo pixel</label>
+      </div>
+    </div>
+    ${c.bgVideo ? `<div class="arow"><span class="ok">✔ vídeo de fondo</span><button class="btn sm danger" data-act="clear" data-key="sel:bgVideo">✕ Quitar vídeo</button></div>` : ''}
+    <p class="note">Los cambios se ven al momento detrás de este panel. Se incluyen en «Exportar todo» y en «Publicar portada en la web».</p>`;
+}
+function openSelEditor() {
+  openModal(`<h3>🎨 Pantalla de selección</h3><div id="selBox"></div>
+    <div class="row"><button class="btn danger" id="selReset" type="button">Restablecer</button><button class="btn primary" data-close>Listo</button></div>`);
+  $('#modal').classList.add('side');
+  renderSelEditor();
+  $('#selReset').onclick = () => { S.settings.sel = normSel({}); save(true); applySelSkin(); renderSelEditor(); };
+}
+$('#selSkinBtn').onclick = openSelEditor;
+function onSelField(e) {
+  const el = e.target; if (!el.dataset || !el.dataset.sel || el.type === 'file') return;
+  const c = S.settings.sel, k = el.dataset.sel;
+  if (el.type === 'checkbox') c[k] = el.checked;
+  else if (el.type === 'range') { c[k] = Number(el.value); const o = el.closest('label')?.querySelector('output'); if (o) o.textContent = el.value + '%'; }
+  else c[k] = el.value;
+  applySelSkin(); save();
+}
+$('#modalCard').addEventListener('input', onSelField);
+$('#modalCard').addEventListener('change', onSelField);
+
 /* música de la pantalla de selección de combate */
-const menuMusicSlot = () => audioSlot('set:menuMusic', S.settings.menuMusic, 'Música de la pantalla de selección (en bucle; si la recortas, se repite ese fragmento)', 'Sin música');
+function musicList(prefix, list, emptyText) {
+  for (let i = list.length - 1; i >= 0; i--) if (!list[i] || !list[i].ref) list.splice(i, 1);
+  return `<div class="mlist">
+    ${list.length ? list.map((it, i) => audioSlot(`${prefix}:${i}`, it.ref, `🎵 Canción ${i + 1}`)).join('') : `<p class="muted small" style="margin:4px 0">${emptyText}</p>`}
+    <label class="btn sm file-btn">➕ Añadir canciones<input type="file" class="file-hit" multiple accept="audio/*,.mp3,.wav,.ogg,.m4a" data-key="${prefix}:new" data-type="audio"></label>
+    ${list.length > 1 ? `<p class="note">Suenan en orden aleatorio: al abrir la pantalla empieza una al azar y, cuando acaba, sigue otra.</p>` : ''}
+  </div>`;
+}
+const menuMusicSlot = () => musicList('mm', S.settings.menuMusics, 'Sin música: sube una o varias canciones.');
 function openMenuMusic() {
   openModal(`<h3>🎵 Música de la pantalla de selección</h3>
     <p class="tip" style="margin:0 0 12px">Es una música general, no depende de ningún escenario: suena aquí mientras eliges personajes y escenario, y se para al empezar el combate (el combate usa la música de su escenario).</p>
@@ -1593,11 +1741,11 @@ $('#menuMusicBtn').onclick = openMenuMusic;
 function onSetupScreen() { return !$('#view-battle').hidden && $('#battle').hidden && $('#titleScr').hidden; }
 function playMenuMusic() {
   const st = S.settings;
-  if (!st.menuMusic || st.muted || !onSetupScreen()) return;
+  if (!st.menuMusics.length || st.muted || !onSetupScreen()) return;
   if (Music.kind === 'menu' && Music.el && !Music.el.paused) return;
-  Music.play(st.menuMusic, st.menuMusicTrim); Music.kind = 'menu';
+  Music.playList(st.menuMusics, 'menu');
 }
-document.addEventListener('pointerdown', () => { if (S.settings.menuMusic && Music.kind === 'menu' && Music.el && Music.el.paused) Music.el.play().catch(() => {}); else if (Music.kind !== 'menu') setTimeout(playMenuMusic, 0); }, true);
+document.addEventListener('pointerdown', () => { if (S.settings.menuMusics.length && Music.kind === 'menu' && Music.el && Music.el.paused) Music.el.play().catch(() => {}); else if (Music.kind !== 'menu') setTimeout(playMenuMusic, 0); }, true);
 function victoryMusic() {
   stopBattleSound();
   if (S.settings.muted) return;
@@ -2230,7 +2378,7 @@ function toast(msg) {
 }
 let modalLock = false, modalOnClose = null;
 function openModal(html, cls = '') { $('#modalCard').innerHTML = html; $('#modalCard').className = 'card ' + cls; $('#modal').hidden = false; }
-function closeModal() { if (modalLock) return; $('#modal').hidden = true; const f = modalOnClose; modalOnClose = null; if (f) f(); }
+function closeModal() { if (modalLock) return; $('#modal').hidden = true; $('#modal').classList.remove('side'); const f = modalOnClose; modalOnClose = null; if (f) f(); }
 $('#modal').addEventListener('click', e => { if (e.target.id === 'modal' || e.target.closest('[data-close]')) closeModal(); });
 
 /* =========================================================
@@ -2985,6 +3133,12 @@ function target(key) {
   if (p[0] === 'ar') { const a = getArena(edA.sel); return a ? [a, p[1]] : null; }
   if (p[0] === 'set') return [S.settings, p[1]];
   if (p[0] === 'ti') return [S.settings.title, p[1]];
+  if (p[0] === 'sel') return [S.settings.sel, p[1]];
+  if (p[0] === 'tim' || p[0] === 'mm') {
+    const L = p[0] === 'tim' ? S.settings.title.musics : S.settings.menuMusics;
+    if (p[1] === 'new') { const o = { ref: null, refTrim: null }; L.push(o); return [o, 'ref']; }
+    return L[+p[1]] ? [L[+p[1]], 'ref'] : null;
+  }
   if (p[0] === 'st') return S.settings.status[p[1]] ? [S.settings.status[p[1]], p[2]] : null;
   return null;
 }
@@ -2996,7 +3150,7 @@ function imgSlot(key, ref, label, opt = {}) {
       <span>${label}</span>
       <input type="file" class="file-hit" accept="image/png,image/apng,image/gif,image/webp,image/jpeg,image/*,video/mp4,video/webm,video/*" data-key="${key}" data-type="image">
     </label>
-    ${ref && key !== 'ar:bg' && key !== 'ti:bg' && !opt.noRm ? `<button class="btn sm" data-act="rmbg" data-key="${key}" title="Borrar el fondo de la imagen por color">✂️ Quitar fondo</button>` : ''}
+    ${ref && key !== 'ar:bg' && key !== 'ti:bg' && key !== 'sel:bg' && !opt.noRm ? `<button class="btn sm" data-act="rmbg" data-key="${key}" title="Borrar el fondo de la imagen por color">✂️ Quitar fondo</button>` : ''}
     ${opt.optional && ref ? `<button class="link" data-act="clear" data-key="${key}">Quitar</button>` : ''}
   </div>`;
 }
@@ -3076,9 +3230,15 @@ function onTrimInput(el) {
   if (info) { drawWave($('canvas', box), info, trim); $('.dur', box).textContent = trimText(info, trim); }
   save();
 }
-const IMG_MAX = { 'f:img': 400, 'tf:img': 400, 'f:poseAtk': 400, 'f:poseHurt': 400, 'ar:bg': 1400, 'ar:platImg': 500 };
+const IMG_MAX = { 'sel:bg': 1400, 'sel:logo': 800, 'ti:bg': 1400, 'ti:logo': 800, 'f:img': 400, 'tf:img': 400, 'f:poseAtk': 400, 'f:poseHurt': 400, 'ar:bg': 1400, 'ar:platImg': 500 };
 function rerenderFor(key) {
-  if (key === 'set:menuMusic') {
+  if (/^(mm|tim):/.test(key)) {
+    [S.settings.menuMusics, S.settings.title.musics].forEach(L => { for (let i = L.length - 1; i >= 0; i--) if (!L[i].ref) L.splice(i, 1); });
+    save(true);
+  }
+  if (key.startsWith('tim:')) return renderTitleEditor();
+  if (key.startsWith('sel:')) { applySelSkin(); if ($('#selBox')) renderSelEditor(); return; }
+  if (key.startsWith('mm:')) {
     if (!$('#modal').hidden && $('#mmBox')) { $('#mmBox').innerHTML = menuMusicSlot(); hydrateTrims($('#mmBox')); }
     if (onSetupScreen()) { Music.stop(); playMenuMusic(); }
     if ($('#view-arenas').hidden) return;
@@ -3087,7 +3247,7 @@ function rerenderFor(key) {
 async function handleUpload(input, file) {
   const key = input.dataset.key, t = target(key), type = input.dataset.type;
   if (!t || !file) return;
-  if (type === 'image' && isVideoFile(file) && (key === 'ar:bg' || key === 'ti:bg')) {
+  if (type === 'image' && isVideoFile(file) && (key === 'ar:bg' || key === 'ti:bg' || key === 'sel:bg')) {
     try { t[0].bgVideo = await putMedia(await readVideo(file)); save(true); rerenderFor(key); toast('Vídeo de fondo cargado ✔'); }
     catch (e) { toast('No se pudo cargar ese vídeo (máx. 80 MB)'); }
     return;
@@ -3117,7 +3277,11 @@ function stopPreviewAudio() { if (previewAudio) { previewAudio.pause(); clearTim
 function editorCommon(root) {
   root.addEventListener('change', e => {
     const inp = e.target;
-    if (inp.type === 'file' && inp.dataset.key) { const fl = inp.files && inp.files[0]; handleUpload(inp, fl); try { inp.value = ''; } catch (_) {} }
+    if (inp.type === 'file' && inp.dataset.key) {
+      const fls = [...(inp.files || [])];
+      if (inp.multiple) (async () => { for (const fl of fls) await handleUpload(inp, fl); })(); else handleUpload(inp, fls[0]);
+      try { inp.value = ''; } catch (_) {}
+    }
   });
   root.addEventListener('input', e => { if (e.target.dataset.trim) onTrimInput(e.target); });
   root.addEventListener('dragover', e => { const d = e.target.closest('.drop'); if (d) { e.preventDefault(); d.classList.add('over'); } });
@@ -3142,7 +3306,7 @@ function editorCommon(root) {
     if (b.dataset.act === 'listen') {
       if (previewAudio && previewAudio._key === key && !previewAudio.paused) return stopPreviewAudio();
       stopPreviewAudio();
-      const vol = (key === 'ar:music' || key === 'set:winMusic' || key === 'ti:music' || key === 'set:menuMusic') ? S.settings.musicVol : S.settings.sfxVol;
+      const vol = (key === 'ar:music' || key === 'set:winMusic' || /^(tim|mm):/.test(key)) ? S.settings.musicVol : S.settings.sfxVol;
       previewAudio = playClip(t[0][t[1]], vol, t[0][t[1] + 'Trim'], true);
       if (previewAudio) previewAudio._key = key;
       return;
@@ -3708,7 +3872,7 @@ function renderArenaEditor() {
       ${statField('data-set', 'sfxVol', 'Volumen de los efectos', 0, 100, Math.round(st.sfxVol * 100), '%')}
       <label class="check full"><input type="checkbox" data-set="defaultMusic" ${st.defaultMusic ? 'checked' : ''}> Usar música por defecto cuando el escenario no tenga una propia</label>
       <label class="check full"><input type="checkbox" data-set="waitAudio" ${st.waitAudio ? 'checked' : ''}> Los ataques no terminan hasta que acaba su sonido (con el recorte que le hayas puesto)</label>
-      <div class="full">${audioSlot('set:menuMusic', st.menuMusic, 'Música de la pantalla de selección (en bucle; si la recortas, se repite ese fragmento)', 'Sin música')}</div>
+      <div class="full"><span class="lbl">Música de la pantalla de selección</span>${menuMusicSlot()}</div>
       <div class="full">${audioSlot('set:winMusic', st.winMusic, 'Música de victoria', 'Fanfarria por defecto')}</div>
     </div>
   </div>
@@ -4261,7 +4425,7 @@ function doImport() {
     ed.sel = fighters[0]?.id || ed.sel; edA.sel = arenas[0]?.id || edA.sel;
     save(true); closeModal(); renderEditor(); renderArenaEditor(); renderSetup();
     if (!$('#view-title').hidden) renderTitleEditor();
-    paintSound(); Music.stop(); playMenuMusic();
+    paintSound(); applySelSkin(); Music.stop(); playMenuMusic();
     toast(replace && d.settings ? `Importado todo: ${fighters.length} personaje(s), ${arenas.length} escenario(s), pantalla de inicio y músicas ✔` : `Importado: ${fighters.length} personaje(s) y ${arenas.length} escenario(s) ✔`);
   };
   $('#impAdd').onclick = () => go(false);
@@ -4327,7 +4491,7 @@ function titleMusic() {
   const t = S.settings.title;
   Music.stop();
   if (S.settings.muted) return;
-  if (t.music) Music.play(t.music, t.musicTrim);
+  if (t.musics.length) Music.playList(t.musics, 'title');
   else if (t.synth) { try { Music.synth = startSynth(); } catch (e) {} }
 }
 function titleSilenced() {
@@ -4380,8 +4544,8 @@ $('.brand').addEventListener('click', () => showTitle());
 async function portadaPack() {
   const st = S.settings, t = clone(st.title);
   const pack = { app: 'pokemdk-portada', stamp: Date.now(), title: t, f1name: getF(t.f1)?.name || '', f2name: getF(t.f2)?.name || '',
-    menuMusic: st.menuMusic, menuMusicTrim: st.menuMusicTrim, media: {} };
-  for (const id of usedMedia([t, st.menuMusic])) { const v = MEDIA[id]; if (v) pack.media[id] = v instanceof Blob ? await blobToDataURL(v) : v; }
+    menuMusics: st.menuMusics, sel: clone(st.sel), media: {} };
+  for (const id of usedMedia([t, st.menuMusics, st.sel])) { const v = MEDIA[id]; if (v) pack.media[id] = v instanceof Blob ? await blobToDataURL(v) : v; }
   return pack;
 }
 async function saveFile(name, blob) {
@@ -4425,7 +4589,9 @@ async function loadPortada() {
     if (p.f1name) t.f1 = byName(p.f1name);
     if (p.f2name) t.f2 = byName(p.f2name);
     S.settings.title = normTitle(t);
-    if ('menuMusic' in p) { S.settings.menuMusic = refOr(p.menuMusic); S.settings.menuMusicTrim = normTrim(p.menuMusicTrim); }
+    if (p.sel) S.settings.sel = normSel(p.sel);
+    if ('menuMusics' in p) S.settings.menuMusics = normList(p.menuMusics);
+    else if ('menuMusic' in p) S.settings.menuMusics = normList([{ ref: p.menuMusic, refTrim: p.menuMusicTrim }]);
     S.portadaStamp = p.stamp;
     save(true);
     return true;
@@ -4445,7 +4611,7 @@ function renderTitleEditor() {
     <div class="ts-frame${edT.phone ? ' phone' : ''}" id="tsPrev"></div>
     <label class="check" style="margin-top:12px"><input type="checkbox" data-ti="enabled" ${t.enabled ? 'checked' : ''}> Mostrar al abrir la app</label>
     <div class="arow" style="margin:10px 0 6px"><button class="btn sm primary" data-act="tsPublish">🌐 Publicar portada en la web</button><button class="btn sm" data-io="export">⬆ Exportar todo</button><button class="btn sm" data-io="import">⬇ Importar todo</button></div>
-    <p class="note">«Publicar portada en la web» crea el archivo <b>portada.json</b>. Cuando lo subas a la carpeta pokemdk de GitHub, la web mostrará esta portada (y la música de la selección) a todo el que la abra, sin importar nada.</p>
+    <p class="note">«Publicar portada en la web» crea el archivo <b>portada.json</b>. Cuando lo subas a la carpeta pokemdk de GitHub, la web mostrará esta portada (y el aspecto y la música de la selección) a todo el que la abra, sin importar nada.</p>
     <p class="note">«Exportar todo» guarda en un archivo personajes, escenarios, esta pantalla de inicio y las músicas, para pasarlo a otro dispositivo o a la web.<br>Para volver a verla en cualquier momento, toca el logo de arriba a la izquierda. Se continúa pulsando Enter (o cualquier tecla) o tocando la pantalla.</p>
   </div>
   <div class="card">
@@ -4508,7 +4674,8 @@ function renderTitleEditor() {
   </div>
   <div class="card">
     <h3>Sonido</h3>
-    ${audioSlot('ti:music', t.music, 'Música de la pantalla de inicio (en bucle)', t.synth ? 'Sonará la música por defecto' : 'Sin música')}
+    <span class="lbl">Música de la pantalla de inicio</span>
+    ${musicList('tim', t.musics, t.synth ? 'Sin canciones: sonará la música por defecto.' : 'Sin música.')}
     <label class="check" style="margin:10px 0 14px"><input type="checkbox" data-ti="synth" ${t.synth ? 'checked' : ''}> Usar la música por defecto si no subes ninguna</label>
     ${audioSlot('ti:pressSound', t.pressSound, 'Sonido al pulsar para continuar', 'Sonido por defecto')}
     <div class="fields" style="margin-top:12px">
@@ -4561,7 +4728,7 @@ $('#tForm').addEventListener('click', e => {
           S.fighters.push(extra[2]);
           save(true);
         }
-        if ((st.v || 2) < 7 && !S.settings.title.music) { S.settings.title.music = 'art:mdkmusic'; S.settings.title.musicTrim = null; save(true); }
+        if ((st.v || 2) < 7 && !S.settings.title.musics.length) { S.settings.title.musics.push({ ref: 'art:mdkmusic', refTrim: null }); save(true); }
         if ((st.v || 2) < 6) {
           const t = S.settings.title;
           if (!t.bg && !t.bgVideo) t.bg = 'art:mdkbg';
@@ -4594,6 +4761,7 @@ $('#tForm').addEventListener('click', e => {
   await Promise.race([loadPortada(), wait(3000)]);
   paintSound();
   renderSetup();
+  applySelSkin();
   if (S.settings.title.enabled) showTitle(); else playMenuMusic();
 })();
 if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) {
