@@ -112,6 +112,19 @@ body.sel-on{background:transparent}
 .on-games{display:flex;flex-direction:column;gap:6px;margin:10px 0}
 .on-team{display:flex;gap:8px;flex-wrap:wrap;min-height:60px;align-items:center}
 .on-team img{height:56px;width:56px;object-fit:contain;background:#2b2f55;border-radius:8px}
+.plist{display:flex;flex-direction:column;gap:6px}
+.prow{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;background:#272a4d;flex-wrap:wrap}
+.prow .pst{margin-left:auto;color:var(--muted);font-size:13px;font-weight:700}
+.pdot{width:10px;height:10px;border-radius:50%;background:#80ed99;flex:none}
+.pdot.busy{background:#ffbe0b}
+.bracket{display:flex;gap:14px;overflow-x:auto;padding-bottom:6px}
+.bround{display:flex;flex-direction:column;gap:8px;justify-content:space-around;min-width:170px}
+.bmatch{background:#272a4d;border:2px solid var(--line);border-radius:10px;padding:8px 10px;display:flex;flex-direction:column;gap:2px;font-weight:700}
+.bmatch.live{border-color:var(--accent)}
+.bmatch i{font-size:11px;color:var(--muted);font-style:normal}
+.bmatch em{font-size:11px;color:var(--accent);font-style:normal}
+.bmatch .tw{color:#80ed99}.bmatch .tl{color:var(--muted);text-decoration:line-through}
+.tour-pl{display:flex;flex-wrap:wrap;gap:6px 14px}
 .on-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .on-row input{max-width:160px;text-transform:uppercase;letter-spacing:4px;font-weight:800}
 
@@ -160,6 +173,7 @@ body.sel-on{background:transparent}
 .doubles .hpos-00{right:3%;bottom:25%}
 .doubles .hpos-01{right:3%;bottom:5%}
 .hud-name{display:flex;justify-content:space-between;gap:8px;margin-bottom:.8cqw;white-space:nowrap;overflow:hidden}
+.tdots{color:#e63946;letter-spacing:1px}
 .hud-name .n{overflow:hidden;text-overflow:ellipsis}
 .hpbar{display:flex;align-items:center;gap:.8cqw}
 .hpbar b{color:#e85d04;font-size:.85em}
@@ -441,6 +455,7 @@ body.ts-lock{overflow:hidden}
       <div class="mode" id="formatRow">
         <button data-format="single" class="on">👤 Individual (1 vs 1)</button>
         <button data-format="double">👥 Por parejas (2 vs 2)</button>
+        <button data-format="triple">🔁 3 vs 3 (relevos)</button>
       </div>
       <div id="pickArea">
         <h3 class="sub">Escenario</h3>
@@ -2394,7 +2409,8 @@ $('#modal').addEventListener('click', e => { if (e.target.id === 'modal' || e.ta
    Preparación del combate
    ========================================================= */
 const B = { mode: 'cpu', format: 'single', sel: [[], []], arenaId: null, units: [], busy: false, active: false, arena: null };
-const need = () => B.format === 'double' ? 2 : 1;
+const FMT_N = { single: 1, double: 2, triple: 3 };
+const need = () => FMT_N[B.format] || 1;
 
 function arenaThumb(a) {
   const bg = src(a.bg);
@@ -2402,10 +2418,9 @@ function arenaThumb(a) {
 }
 function fixSelection() {
   const fs = S.fighters, n = need();
-  const defs = [[fs[0], fs[1] || fs[0]], [fs[1] || fs[0], fs[2] || fs[0]]];
   [0, 1].forEach(s => {
     let arr = B.sel[s].filter(id => getF(id)).slice(-n);
-    for (let k = 0; arr.length < n; k++) arr.push(defs[s][Math.min(k, 1)].id);
+    for (let k = 0; arr.length < n; k++) arr.push(fs[(s + arr.length) % fs.length].id);
     B.sel[s] = arr;
   });
 }
@@ -2421,8 +2436,8 @@ function renderSetup() {
   fixSelection();
   if (!getArena(B.arenaId)) B.arenaId = S.arenas[0].id;
   const n = need();
-  $('#p0Title').textContent = (B.mode === 'cpu' ? 'Tu equipo' : 'Jugador 1') + (n > 1 ? ' · elige 2' : '');
-  $('#p1Title').textContent = (B.mode === 'cpu' ? 'Rival (CPU)' : 'Jugador 2') + (n > 1 ? ' · elige 2' : '');
+  $('#p0Title').textContent = (B.mode === 'cpu' ? 'Tu equipo' : 'Jugador 1') + (n > 1 ? ' · elige ' + n + (n === 3 ? ' (salen en ese orden)' : '') : '');
+  $('#p1Title').textContent = (B.mode === 'cpu' ? 'Rival (CPU)' : 'Jugador 2') + (n > 1 ? ' · elige ' + n : '');
   $$('[data-clear]').forEach(b => b.hidden = n < 2);
   $('#arenaPick').innerHTML = S.arenas.map(a => `
     <button class="apick ${a.id === B.arenaId ? 'on' : ''}" data-arena="${a.id}">
@@ -2447,7 +2462,7 @@ $('#setup').addEventListener('click', e => {
   if (p) {
     const s = +p.dataset.side, arr = B.sel[s];
     if (need() === 1) B.sel[s] = [p.dataset.id];
-    else { arr.push(p.dataset.id); while (arr.length > 2) arr.shift(); }
+    else { arr.push(p.dataset.id); while (arr.length > need()) arr.shift(); }
     sfx('select'); renderSetup(); return;
   }
   const cl = e.target.closest('[data-clear]');
@@ -2488,7 +2503,7 @@ function makeUnit(c, f, side, slot) {
   wrap.innerHTML = `<div class="idle idle-${f.idle}" style="animation-delay:-${(Math.random() * 2).toFixed(2)}s"><img alt=""></div>`;
   const hud = document.createElement('div');
   hud.className = `hud hpos-${vs}${slot}`;
-  hud.innerHTML = `<div class="hud-name"><span class="n"></span><span>Nv50</span></div>
+  hud.innerHTML = `<div class="hud-name"><span class="n"></span><span class="tdots">Nv50</span></div>
     <div class="hpbar"><b>PS</b><div class="track"><div class="fill"></div></div></div>
     <div class="hp-row"><div class="stages"></div><div class="hp-num"></div></div>`;
   const res = $('#result');
@@ -2519,13 +2534,16 @@ async function startBattle(opts) {
   else {
     fixSelection();
     teams = [0, 1].map(s => B.sel[s].map(getF).filter(Boolean));
-    if (teams.some(t => t.length !== need())) return toast(need() === 2 ? 'Elige 2 luchadores para cada bando' : 'Elige un luchador para cada bando');
+    if (teams.some(t => t.length !== need())) return toast(need() > 1 ? `Elige ${need()} luchadores para cada bando` : 'Elige un luchador para cada bando');
     ar = getArena(B.arenaId) || S.arenas[0];
   }
   stopAllMusic();
   $('#setup').hidden = true; $('#battle').hidden = false; $('#result').hidden = true;
   const c = $('#arena');
   $$('.proj, .fximg, .particle, .ring, .sparkle, .float, .arrow, .trans, .aura, .unit, .hud, .shield, .scr', c).forEach(n => n.remove());
+  B.relay = teams[0].length === 3;
+  B.teamAll = teams.map(t => t.slice());
+  if (B.relay) { B.bench = teams.map(t => t.slice(1).map(clone)); teams = teams.map(t => [t[0]]); } else B.bench = [[], []];
   B.doubles = teams[0].length === 2;
   c.classList.toggle('doubles', B.doubles);
   B.arena = clone(ar);
@@ -2533,7 +2551,7 @@ async function startBattle(opts) {
   B.units = [];
   B.megaUsed = [false, false];
   teams.forEach((team, side) => team.forEach((srcF, slot) => B.units.push(makeUnit(c, clone(srcF), side, slot))));
-  computeLabels();
+  computeLabels(); paintDots();
   await Promise.all(B.units.map(U => U.img.decode().catch(() => {})));
   intro();
 }
@@ -2580,6 +2598,7 @@ function canTransform(C) {
   return tf && tf.enabled && !C.transformed && !C.fainted && !B.megaUsed[C.side] && !B.megaPicked[C.side] && (tf.when === 'always' || C.hp / C.max <= .5);
 }
 function beginTurn() {
+  if (B.online && B.online.ended) { B.busy = false; $('#moves').innerHTML = ''; $('#msg').textContent = B.online.endMsg || 'El combate ha terminado.'; $('#fleeBtn').disabled = false; return; }
   B.pending = []; B.megaPicked = [false, false]; B.megaToggle = false;
   if (B.online) { B.online.turn++; B.online.hpAt[B.online.turn] = B.units.map(u => u.hp).join(','); }
   B.queue = B.units.filter(U => !U.fainted && !U.charging && (B.online ? U.side === B.online.side : (U.side === 0 || B.mode === 'pvp')));
@@ -2760,6 +2779,7 @@ async function resolveTurn(actions) {
   }
   await checkFaints();
   { const w = winnerSide(); if (w !== null) return endBattle(w); }
+  await replaceFainted();
   await endTurn();
   beginTurn();
 }
@@ -3093,12 +3113,43 @@ async function attackPipeline(A, m, targets, opt = {}) {
   await secondaryStatus(A, m, targets, outs);
 }
 async function checkFaints() {
-  for (const U of B.units) if (U.hp <= 0 && !U.fainted) { U.fainted = true; await faint(U); }
+  for (const U of B.units) if (U.hp <= 0 && !U.fainted) { U.fainted = true; paintDots(); await faint(U); }
 }
 function winnerSide() {
-  if (!alive(1).length) return 0;
-  if (!alive(0).length) return 1;
+  const out = s => !alive(s).length && !(B.relay && B.bench[s].length);
+  if (out(1)) return 0;
+  if (out(0)) return 1;
   return null;
+}
+/* 3 vs 3 por relevos: bolitas con los que quedan y entrada del siguiente */
+function paintDots() {
+  B.units.forEach(U => {
+    const el = U.hud.querySelector('.tdots'); if (!el) return;
+    if (!B.relay) { el.textContent = 'Nv50'; return; }
+    const left = B.bench[U.side].length + (U.fainted ? 0 : 1);
+    el.textContent = '●'.repeat(left) + '○'.repeat(Math.max(0, 3 - left));
+    el.title = `Le quedan ${left} de 3`;
+  });
+}
+async function replaceFainted() {
+  if (!B.relay) return;
+  const c = $('#arena');
+  for (const side of [0, 1]) {
+    for (let i = 0; i < B.units.length; i++) {
+      const U = B.units[i];
+      if (U.side !== side || !U.fainted || !B.bench[side].length) continue;
+      const f = B.bench[side].shift();
+      U.wrap.remove(); U.hud.remove(); if (U.shieldEl) U.shieldEl.remove();
+      const N = makeUnit(c, f, side, U.slot);
+      B.units[i] = N;
+      computeLabels(); paintDots();
+      await N.img.decode().catch(() => {});
+      await say(`¡${N.label} entra en combate!`, 250);
+      await withAudioWait(() => entryAnim(c, N, N.vside));
+      showHud(N);
+      await wait(250);
+    }
+  }
 }
 async function faint(C) {
   sfx('faint');
@@ -3106,14 +3157,15 @@ async function faint(C) {
   C.wrap.animate([{ transform: 'translateY(0)', opacity: 1 }, { transform: 'translateY(70%)', opacity: 0 }], { duration: 750, easing: 'ease-in', fill: 'forwards' });
   await say(`¡${C.label} se ha debilitado!`, 900);
 }
+const joinY = a => a.length > 1 ? a.slice(0, -1).join(', ') + ' y ' + a[a.length - 1] : (a[0] || '');
 function endBattle(side) {
   B.active = false;
   B.units.forEach(U => hideShield(U));
   victoryMusic();
-  const team = B.units.filter(U => U.side === side);
+  const team = B.relay ? B.teamAll[side].map(f => ({ label: f.name, f })) : B.units.filter(U => U.side === side);
   const who = B.online ? (side === LOCAL() ? '¡Has ganado!' : '¡Has perdido!') : B.mode === 'pvp' ? `¡Gana el Jugador ${side + 1}!` : (side === 0 ? '¡Has ganado!' : '¡Has perdido!');
-  if (B.online) onlineBattleEnded();
-  $('#resultTitle').innerHTML = `🏆 ${esc(who)}<br><span style="font-size:.7em">${esc(team.map(U => U.label).join(' y '))} ${team.length > 1 ? 'vencen' : 'es el vencedor'}</span>`;
+  if (B.online) onlineBattleEnded(side);
+  $('#resultTitle').innerHTML = `🏆 ${esc(who)}<br><span style="font-size:.7em">${esc(joinY(team.map(U => U.label)))} ${team.length > 1 ? 'vencen' : 'es el vencedor'}</span>`;
   $('#resultImgs').innerHTML = team.map(U => `<img src="${esc(src(U.f.img))}" alt="">`).join('');
   $('#rematchBtn').textContent = B.online ? '↩ Volver a la sala' : '🔁 Revancha';
   $('#backBtn').textContent = B.online ? 'Salir de la partida' : 'Elegir otros luchadores';
@@ -4066,7 +4118,7 @@ $('#newA').onclick = () => {
    Combates online entre dispositivos (P2P con PeerJS)
    Tú eres el anfitrión: la partida usa tus personajes.
    ========================================================= */
-const PEER_PREFIX = 'arenacombates-v1-';
+const PEER_PREFIX = 'pokemdk-sala-v2-';
 const REMOTE = {};
 const PEER_OPTS = (() => {
   const q = new URLSearchParams(location.search).get('peer');
@@ -4074,11 +4126,14 @@ const PEER_OPTS = (() => {
   const [host, port] = q.split(':');
   return { debug: 0, host, port: +port || 9000, path: '/', secure: false };
 })();
-const O = { phase: 'idle', role: null, code: '', peer: null, conn: null, myTeam: [], opTeam: [], format: 'single', arenaId: null,
-  ver: 0, sig: '', cfg: null, roster: null, incoming: null, pendingStart: null, deferStart: null, lastGid: null, busy: false, prog: 0, msg: '', timer: null };
-const onNeed = () => O.format === 'double' ? 2 : 1;
+const O = { phase: 'idle', role: null, code: '', peer: null, conns: {}, hostConn: null, pid: null, name: '',
+  players: [], challenges: {}, matches: {}, tour: null, ver: 0, sig: '',
+  lobby: null, roster: null, incoming: null, match: null, myTeam: [], deferStart: null, lastGid: null, busy: false, msg: '', savedStatus: null };
+const FMT_LABEL = { single: '👤 1 vs 1', double: '👥 2 vs 2', triple: '🔁 3 vs 3 (relevos)' };
+const fmtN = f => FMT_N[f] || 1;
 const rosterSig = () => { const t = JSON.stringify({ f: S.fighters, a: S.arenas, s: S.settings.status }); let h = 0; for (let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) | 0; return t.length + ':' + h; };
 const randCode = () => { const a = 'abcdefghjkmnpqrstuvwxyz23456789'; return Array.from({ length: 4 }, () => a[Math.floor(Math.random() * a.length)]).join(''); };
+try { O.name = localStorage.getItem('pokemdk-name') || ''; } catch (e) {}
 function openPeer(id) {
   return new Promise((res, rej) => {
     let p;
@@ -4088,143 +4143,177 @@ function openPeer(id) {
     p.on('error', e => { clearTimeout(to); rej(e); });
   });
 }
-async function send(msg) {
-  const c = O.conn; if (!c || !c.open) return;
+async function rawSend(conn, msg) {
+  if (!conn || !conn.open) return;
   try {
-    const dc = c.dataChannel;
+    const dc = conn.dataChannel;
     while (dc && dc.bufferedAmount > 2 * 1048576) await wait(40);
-    c.send(msg);
+    conn.send(msg);
   } catch (e) {}
 }
-async function sendRoster() {
+/* el anfitrión hace de servidor: los mensajes de los jugadores pasan por él */
+function toServer(d) { if (O.role === 'host') setTimeout(() => onServer('host', d), 0); else rawSend(O.hostConn, d); }
+function toClient(pid, d) { if (pid === 'host') { if (O.role === 'host') setTimeout(() => onClient(d), 0); } else rawSend(O.conns[pid], d); }
+const myList = () => O.role === 'host' ? S.fighters : (O.roster ? O.roster.fighters : []);
+const myArenas = () => O.role === 'host' ? S.arenas : (O.roster ? O.roster.arenas : []);
+const connected = () => O.role === 'host' ? true : !!(O.hostConn && O.hostConn.open);
+
+/* ---------------- servidor (solo el anfitrión) ---------------- */
+const pl = pid => O.players.find(p => p.pid === pid);
+const pname = pid => (pl(pid) || {}).name || 'Alguien';
+function lobbySnap() {
+  const T = O.tour;
+  return { t: 'lobby', code: O.code,
+    players: O.players.map(p => ({ pid: p.pid, name: p.name, busy: !!p.busy })),
+    tour: T ? { format: T.format, arenaId: T.arenaId, champion: T.champion ? pname(T.champion) : (T.championName || null),
+      rounds: T.rounds.map(r => r.map(x => ({ a: x.a ? (x.aName || pname(x.a)) : null, b: x.b ? (x.bName || pname(x.b)) : null, w: x.winner ? (x.winner === x.a ? 'a' : 'b') : null, live: !!x.mid && !x.winner }))) } : null };
+}
+let lobbyTimer = null;
+function broadcastLobby() {
+  if (O.role !== 'host' || lobbyTimer) return;
+  lobbyTimer = setTimeout(() => { lobbyTimer = null; const s = lobbySnap(); O.players.forEach(p => toClient(p.pid, s)); }, 60);
+}
+async function sendRosterTo(conn) {
   const json = JSON.stringify({ fighters: S.fighters, arenas: S.arenas, status: S.settings.status });
   const ids = [...new Set([...json.matchAll(/"m:([a-z0-9]+)"/g)].map(x => x[1]))].filter(id => MEDIA[id]);
-  O.ver = Date.now(); O.sig = rosterSig();
   const ver = O.ver;
-  /* PeerJS solo entrega bien mensajes pequeños: todo va en trozos */
   const JC = 4000, jn = Math.max(1, Math.ceil(json.length / JC));
-  await send({ t: 'roster', ver, parts: jn, media: ids.length });
-  for (let i = 0; i < jn; i++) await send({ t: 'rj', ver, i, d: json.slice(i * JC, (i + 1) * JC) });
+  await rawSend(conn, { t: 'roster', ver, parts: jn, media: ids.length });
+  for (let i = 0; i < jn; i++) await rawSend(conn, { t: 'rj', ver, i, d: json.slice(i * JC, (i + 1) * JC) });
   for (const id of ids) {
     let v = MEDIA[id];
     if (v instanceof Blob) v = await blobToDataURL(v);
     const CH = 12000, n = Math.max(1, Math.ceil(v.length / CH));
-    for (let i = 0; i < n; i++) await send({ t: 'm', ver, id, i, n, d: v.slice(i * CH, (i + 1) * CH) });
-    if (O.ver !== ver) return;
+    for (let i = 0; i < n; i++) await rawSend(conn, { t: 'm', ver, id, i, n, d: v.slice(i * CH, (i + 1) * CH) });
+    if (O.ver !== ver || !conn.open) return;
   }
-  await send({ t: 'rosterDone', ver });
+  await rawSend(conn, { t: 'rosterDone', ver });
 }
-const sendCfg = () => send({ t: 'cfg', format: O.format, arenaId: O.arenaId, hostTeam: O.myTeam, ver: O.ver });
-function teamThumbs(ids, list) {
-  return ids.map(id => list.find(f => f.id === id)).filter(Boolean).map(f => `<img src="${esc(src(f.img))}" alt="" title="${esc(f.name)}">`).join('') || '<span class="muted small">Todavía eligiendo…</span>';
+async function refreshRosterIfChanged() {
+  if (O.sig === rosterSig()) return;
+  O.ver = Date.now(); O.sig = rosterSig();
+  await Promise.all(Object.values(O.conns).map(c => sendRosterTo(c)));
 }
-function pickGrid(list, chosen, n) {
-  return `<div class="pick-grid">${list.map(f => {
-    const order = chosen.map((id, k) => id === f.id ? k + 1 : 0).filter(Boolean);
-    return `<button class="pick ${order.length ? 'on' : ''}" data-oteam="${f.id}">
-      ${order.length ? `<span class="badge">${n > 1 ? order.map(o => o + 'º').join(' ') : '✔'}</span>` : ''}
-      <img src="${esc(src(f.img))}" alt=""><b>${esc(f.name)}</b><small>PS ${f.hp} · ATQ ${f.atk} · DEF ${f.def} · VEL ${f.spd}</small></button>`;
-  }).join('')}</div>`;
+function createMatch(a, b, format, arenaId, tourRef) {
+  const m = { mid: uid(), a, b, format, arenaId, teams: [null, null], started: false, done: false, winner: null, tourRef: tourRef || null };
+  O.matches[m.mid] = m;
+  [a, b].forEach(pid => { const p = pl(pid); if (p) p.busy = m.mid; });
+  Object.keys(O.challenges).forEach(k => { const c = O.challenges[k]; if ([a, b].includes(c.from) || [a, b].includes(c.to)) delete O.challenges[k]; });
+  [a, b].forEach((pid, side) => toClient(pid, { t: 'match', mid: m.mid, side, opp: pname(side ? a : b), format, arenaId, tour: !!tourRef }));
+  if (tourRef) { const x = O.tour.rounds[tourRef.r][tourRef.i]; x.mid = m.mid; }
+  broadcastLobby();
+  return m;
 }
-const connected = () => !!(O.conn && O.conn.open);
-function renderOnline() {
-  const el = $('#onlineArea');
-  if (typeof window.Peer !== 'function') {
-    el.innerHTML = `<div class="empty"><p>No se pudo cargar el modo online. Comprueba tu conexión a internet y recarga la página.</p></div>`; return;
+async function startMatch(m) {
+  m.started = true;
+  await refreshRosterIfChanged();
+  const sm = { t: 'mstart', mid: m.mid, gid: uid(), seed: Math.floor(Math.random() * 4294967296), format: m.format, arenaId: m.arenaId, teams: m.teams, ver: O.ver };
+  [m.a, m.b].forEach(pid => toClient(pid, sm));
+}
+function finishMatch(m, winnerPid, why) {
+  if (!m || m.done) return;
+  m.done = true; m.winner = winnerPid;
+  [m.a, m.b].forEach(pid => { const p = pl(pid); if (p && p.busy === m.mid) p.busy = null; });
+  if (why) [m.a, m.b].filter(pid => pid !== why.skip).forEach(pid => toClient(pid, { t: 'mend', mid: m.mid, reason: why.reason }));
+  if (m.tourRef && O.tour) {
+    const x = O.tour.rounds[m.tourRef.r] && O.tour.rounds[m.tourRef.r][m.tourRef.i];
+    if (x && !x.winner) { x.winner = winnerPid; x.aName = pname(x.a); x.bName = pname(x.b); advanceTour(); }
   }
-  if (O.phase === 'connecting') { el.innerHTML = `<div class="on-card" style="text-align:center"><h3>Conectando…</h3><p class="note">${esc(O.msg || 'Un momento.')}</p></div>`; return; }
-  if (O.phase === 'hosting') {
-    const n = onNeed(), ready = O.myTeam.length === n && O.opTeam.length === n && connected();
-    if (!getArena(O.arenaId)) O.arenaId = S.arenas[0].id;
-    el.innerHTML = `
-      <div class="on-card" style="text-align:center">
-        <div class="muted small">CÓDIGO DE LA PARTIDA</div>
-        <div class="on-code">${esc(O.code.toUpperCase())}</div>
-        <p class="note">Tu rival abre esta misma página (el mismo enlace), pulsa «🌐 Online» y escribe este código.</p>
-        <div class="on-status ${connected() ? 'ok' : 'wait'}">${connected() ? (O.sending ? '📤 Enviando tus personajes a tu rival…' : '✔ Rival conectado') : '⏳ Esperando a que entre tu rival…'}</div>
-      </div>
-      <div class="mode" style="margin-top:14px">
-        <button data-oformat="single" class="${O.format === 'single' ? 'on' : ''}">👤 Individual (1 vs 1)</button>
-        <button data-oformat="double" class="${O.format === 'double' ? 'on' : ''}">👥 Por parejas (2 vs 2)</button>
-      </div>
-      <h3 class="sub">Escenario</h3>
-      <div class="arena-picks">${S.arenas.map(a => `<button class="apick ${a.id === O.arenaId ? 'on' : ''}" data-oarena="${a.id}">${arenaThumb(a)}<b>${esc(a.name)}</b></button>`).join('')}</div>
-      <div class="on-grid">
-        <div><h3 class="sub">Tu equipo · elige ${n}</h3>${pickGrid(S.fighters, O.myTeam, n)}</div>
-        <div><h3 class="sub">Equipo de tu rival</h3><div class="on-card"><div class="on-team">${teamThumbs(O.opTeam, S.fighters)}</div></div>
-          <p class="note" style="margin-top:8px">Tu rival elige entre tus personajes.</p></div>
-      </div>
-      ${O.msg ? `<p class="on-status wait" style="text-align:center">${esc(O.msg)}</p>` : ''}
-      <button class="big-btn" data-on="start" ${ready && !O.pendingStart ? '' : 'disabled'}>${O.pendingStart ? 'ESPERANDO AL RIVAL…' : '¡EMPEZAR COMBATE!'}</button>
-      <p style="text-align:center;margin-top:12px"><button class="btn sm danger" data-on="close">Cerrar la partida</button></p>`;
+  setTimeout(() => { delete O.matches[m.mid]; }, 60000);
+  broadcastLobby();
+}
+function startTour(format, arenaId, pids) {
+  const ids = pids.filter(pid => pl(pid) && !pl(pid).busy).sort(() => Math.random() - .5);
+  if (ids.length < 2) return toast('Hacen falta al menos 2 jugadores libres');
+  let size = 2; while (size < ids.length) size *= 2;
+  const slots = ids.concat(Array(size - ids.length).fill(null));
+  /* repartir los huecos (pases directos) para que no se enfrenten dos huecos */
+  const pairs = [];
+  for (let i = 0; i < size / 2; i++) pairs.push({ a: slots[i], b: slots[size - 1 - i], winner: null, mid: null });
+  O.tour = { format, arenaId, rounds: [pairs], champion: null };
+  advanceTour();
+}
+function advanceTour() {
+  const T = O.tour; if (!T || T.champion) return;
+  const r = T.rounds.length - 1, round = T.rounds[r];
+  round.forEach((x, i) => {
+    if (x.winner) return;
+    const aOk = x.a && pl(x.a), bOk = x.b && pl(x.b);
+    if (!aOk || !bOk) { x.winner = aOk ? x.a : bOk ? x.b : (x.a || x.b); x.aName = x.a ? pname(x.a) : null; x.bName = x.b ? pname(x.b) : null; return; }
+    if (!x.mid && !pl(x.a).busy && !pl(x.b).busy) createMatch(x.a, x.b, T.format, T.arenaId, { r, i });
+  });
+  if (round.every(x => x.winner)) {
+    if (round.length === 1) { T.champion = round[0].winner; T.championName = pname(T.champion); O.players.forEach(p => toClient(p.pid, { t: 'info', msg: `🏆 ¡${T.championName} gana el torneo!` })); }
+    else {
+      const next = [];
+      for (let i = 0; i < round.length; i += 2) next.push({ a: round[i].winner, b: round[i + 1].winner, winner: null, mid: null });
+      T.rounds.push(next);
+      return advanceTour();
+    }
+  }
+  broadcastLobby();
+}
+function dropPlayer(pid) {
+  if (!pl(pid)) return;
+  Object.values(O.matches).forEach(m => {
+    if (m.done || (m.a !== pid && m.b !== pid)) return;
+    const other = m.a === pid ? m.b : m.a;
+    toClient(other, { t: 'mmsg', mid: m.mid, msg: { t: 'bye' } });
+    finishMatch(m, other, m.started ? null : { reason: `${pname(pid)} se ha ido de la sala.`, skip: pid });
+  });
+  Object.keys(O.challenges).forEach(k => { const c = O.challenges[k]; if (c.from === pid || c.to === pid) delete O.challenges[k]; });
+  O.players = O.players.filter(p => p.pid !== pid);
+  delete O.conns[pid];
+  if (O.tour) advanceTour();
+  broadcastLobby();
+}
+function onServer(from, d) {
+  if (!d || typeof d !== 'object' || !pl(from)) return;
+  const me = pl(from);
+  if (d.t === 'hello') { me.name = String(d.name || '').slice(0, 16).trim() || me.name; return broadcastLobby(); }
+  if (d.t === 'challenge') {
+    const to = pl(d.to);
+    if (!to || to.pid === from || to.busy || me.busy) return toClient(from, { t: 'info', msg: 'Ese jugador no está libre ahora.' });
+    const c = { cid: uid(), from, to: to.pid, format: FMT_N[d.format] ? d.format : 'single', arenaId: String(d.arenaId || '') };
+    O.challenges[c.cid] = c;
+    toClient(to.pid, { t: 'challenged', cid: c.cid, from, fromName: me.name, format: c.format, arenaId: c.arenaId });
+    return toClient(from, { t: 'info', msg: `Reto enviado a ${to.name}…` });
+  }
+  if (d.t === 'answer') {
+    const c = O.challenges[d.cid]; if (!c || c.to !== from) return;
+    delete O.challenges[c.cid];
+    if (!d.ok) return toClient(c.from, { t: 'info', msg: `${me.name} ha rechazado el reto.` });
+    if (!pl(c.from) || pl(c.from).busy || me.busy) return toClient(from, { t: 'info', msg: 'Ese reto ya no está disponible.' });
+    createMatch(c.from, c.to, c.format, c.arenaId);
     return;
   }
-  if (O.phase === 'joined') {
-    const cfg = O.cfg, n = cfg ? (cfg.format === 'double' ? 2 : 1) : 1;
-    const list = O.roster ? O.roster.fighters : [];
-    O.myTeam = O.myTeam.filter(id => list.some(f => f.id === id)).slice(-n);
-    const arena = cfg && O.roster ? O.roster.arenas.find(a => a.id === cfg.arenaId) : null;
-    const inc = O.incoming;
-    el.innerHTML = `
-      <div class="on-card" style="text-align:center">
-        <div class="muted small">PARTIDA</div><div class="on-code">${esc(O.code.toUpperCase())}</div>
-        <div class="on-status ${connected() ? 'ok' : 'bad'}">${connected() ? '✔ Conectado con el anfitrión' : '⚠️ Sin conexión con el anfitrión'}</div>
-        ${cfg ? `<p class="note">${cfg.format === 'double' ? '👥 Combate por parejas (2 vs 2)' : '👤 Combate individual (1 vs 1)'}${arena ? ' · Escenario: ' + esc(arena.name) : ''}</p>` : ''}
-        ${inc ? `<p class="note">Recibiendo los personajes del anfitrión… ${inc.total ? Math.round(inc.got / inc.total * 100) + '%' : ''}</p><div class="progress"><div style="width:${inc.total ? Math.round(inc.got / inc.total * 100) : 5}%"></div></div>` : ''}
-      </div>
-      ${cfg && O.roster ? `
-      <div class="on-grid" style="margin-top:14px">
-        <div><h3 class="sub">Tu equipo · elige ${n} (personajes del anfitrión)</h3>${pickGrid(list, O.myTeam, n)}</div>
-        <div><h3 class="sub">Equipo del anfitrión</h3><div class="on-card"><div class="on-team">${teamThumbs(cfg.hostTeam || [], list)}</div></div></div>
-      </div>
-      <p class="on-status ${O.myTeam.length === n ? 'ok' : 'wait'}" style="text-align:center">${O.myTeam.length === n ? '✔ ¡Listo! Esperando a que el anfitrión empiece el combate…' : 'Elige tu equipo'}</p>` : O.msg ? `<p class="on-status bad" style="text-align:center">${esc(O.msg)}</p>` : ''}
-      <p style="text-align:center;margin-top:12px"><button class="btn sm danger" data-on="close">Salir de la partida</button></p>`;
+  const m = d.mid && O.matches[d.mid];
+  if (!m || m.done || (from !== m.a && from !== m.b)) return;
+  const side = from === m.a ? 0 : 1, other = side ? m.a : m.b;
+  if (d.t === 'mpick' && !m.started) {
+    const n = fmtN(m.format), team = (Array.isArray(d.team) ? d.team : []).map(String).filter(id => getF(id)).slice(0, n);
+    if (team.length !== n) return;
+    m.teams[side] = team;
+    [m.a, m.b].forEach(pid => toClient(pid, { t: 'mstate', mid: m.mid, teams: m.teams }));
+    if (m.teams[0] && m.teams[1]) startMatch(m);
     return;
   }
-  el.innerHTML = `
-    <div class="on-grid">
-      <div class="on-card"><h3>🏠 Ser el anfitrión</h3>
-        <p class="note">Creas la partida con <b>tus personajes y escenarios</b>. Tu rival elige su equipo entre ellos y juega desde su dispositivo. No hace falta ninguna cuenta.</p>
-        <button class="btn primary" data-on="host" style="margin-top:12px">Crear partida</button></div>
-      <div class="on-card"><h3>🎮 Unirse a una partida</h3>
-        <p class="note">Escribe el código que te ha dado el anfitrión.</p>
-        <div class="on-row" style="margin-top:8px"><input type="text" id="codeIn" maxlength="4" placeholder="CÓDIGO"><button class="btn" data-on="joinCode">Unirse</button></div>
-      </div>
-    </div>
-    ${O.msg ? `<p class="on-status bad" style="text-align:center">${esc(O.msg)}</p>` : ''}
-    <p class="note" style="margin-top:12px">Los dos necesitáis conexión a internet y abrir este mismo enlace. La partida va directamente de un dispositivo al otro.</p>`;
+  if (d.t === 'mmsg') return toClient(other, { t: 'mmsg', mid: m.mid, msg: d.msg });
+  if (d.t === 'mresult') return finishMatch(m, d.side === 0 ? m.a : d.side === 1 ? m.b : null);
+  if (d.t === 'mquit') {
+    toClient(other, { t: 'mmsg', mid: m.mid, msg: { t: 'bye' } });
+    return finishMatch(m, other, m.started ? null : { reason: `${me.name} ha cancelado el combate.`, skip: from });
+  }
 }
-function attachConn(conn) {
-  O.conn = conn;
-  conn.on('open', async () => {
-    if (O.role === 'host') {
-      sendCfg(); O.sending = true; renderOnline();
-      await sendRoster(); await sendCfg();
-      O.sending = false;
-    }
-    if (B.mode === 'online' && !B.online) renderOnline();
-  });
-  conn.on('data', onData);
-  conn.on('close', () => {
-    if (O.conn !== conn) return;
-    O.conn = null;
-    if (B.online && !B.online.ended) {
-      B.online.ended = true; B.busy = false;
-      $('#msg').textContent = 'Se ha perdido la conexión con tu rival.';
-      $('#moves').innerHTML = ''; $('#fleeBtn').disabled = false;
-      toast('Se ha perdido la conexión con tu rival');
-    }
-    if (O.role === 'host') { O.opTeam = []; O.pendingStart = null; }
-    if (O.role === 'guest' && !B.online && O.phase === 'joined') { O.msg = O.msg || 'Se ha perdido la conexión con el anfitrión.'; closeOnline(true); return; }
-    if (B.mode === 'online' && !B.online) renderOnline();
-  });
-}
+
+/* ---------------- cliente (todos, también el anfitrión) ---------------- */
 let renderTimer = null;
 const renderSoon = () => { if (renderTimer) return; renderTimer = setTimeout(() => { renderTimer = null; if (B.mode === 'online' && !B.online) renderOnline(); }, 150); };
-async function onData(d) {
+function onClient(d) {
   if (!d || typeof d !== 'object') return;
-  if (d.t === 'full' && O.role === 'guest') { O.msg = 'Esa partida ya tiene rival.'; return; }
   if (O.role === 'guest') {
+    if (d.t === 'welcome') { O.pid = d.pid; toServer({ t: 'hello', name: O.name }); return; }
+    if (d.t === 'closed') { O.msg = 'El anfitrión ha cerrado la sala.'; return closeOnline(true); }
     if (d.t === 'roster') { O.incoming = { ver: d.ver, jparts: [], jn: +d.parts || 1, total: +d.media || 0, got: 0, parts: {} }; return renderSoon(); }
     if (d.t === 'rj' && O.incoming && d.ver === O.incoming.ver && Number.isInteger(d.i)) { O.incoming.jparts[d.i] = String(d.d || ''); return; }
     if (d.t === 'm' && O.incoming && d.ver === O.incoming.ver && /^[a-z0-9]+$/.test(d.id)) {
@@ -4241,55 +4330,218 @@ async function onData(d) {
       } catch (e) { O.msg = 'No se pudieron leer los personajes del anfitrión.'; }
       O.incoming = null;
       renderSoon();
-      if (O.deferStart && O.deferStart.ver === O.roster.ver) { const sm = O.deferStart; O.deferStart = null; guestStart(sm); }
+      if (O.deferStart && O.roster && O.deferStart.ver === O.roster.ver) { const sm = O.deferStart; O.deferStart = null; launchOnline(sm); }
       return;
     }
-    if (d.t === 'cfg') {
-      O.cfg = { format: d.format === 'double' ? 'double' : 'single', arenaId: String(d.arenaId || ''), hostTeam: Array.isArray(d.hostTeam) ? d.hostTeam.slice(0, 2).map(String) : [], ver: d.ver };
-      return renderSoon();
-    }
-    if (d.t === 'start') { if (O.roster && O.roster.ver === d.ver) guestStart(d); else O.deferStart = d; return; }
-  } else {
-    if (d.t === 'pick' && !B.online) {
-      const n = onNeed(), team = (Array.isArray(d.team) ? d.team : []).map(String).filter(id => getF(id)).slice(0, 2);
-      O.opTeam = team.length === n ? team : [];
-      return renderSoon();
-    }
-    if (d.t === 'ready' && O.pendingStart && d.gid === O.pendingStart.gid) { const sm = O.pendingStart; O.pendingStart = null; launchOnline(sm); return; }
   }
-  if (d.t === 'act') return onAct(d);
-  if (d.t === 'bye') {
-    if (B.online && !B.online.ended) {
-      B.online.ended = true; B.busy = false;
-      $('#msg').textContent = 'Tu rival ha abandonado la partida.';
-      $('#moves').innerHTML = ''; $('#fleeBtn').disabled = false;
-      toast('Tu rival ha abandonado la partida');
-    } else if (O.role === 'host') { O.opTeam = []; renderSoon(); }
+  if (d.t === 'lobby') { O.lobby = d; return renderSoon(); }
+  if (d.t === 'info') { toast(d.msg); return; }
+  if (d.t === 'challenged') return showChallenge(d);
+  if (d.t === 'match') {
+    closeChallengeModal();
+    O.match = { mid: d.mid, side: d.side, opp: d.opp, format: d.format, arenaId: d.arenaId, tour: d.tour, teams: [null, null], ready: false };
+    const list = myList(), n = fmtN(d.format);
+    O.myTeam = list.slice(0, n).map(f => f.id);
+    while (O.myTeam.length < n && list.length) O.myTeam.push(list[0].id);
+    sfx('appear'); toast(`⚔️ ¡Combate contra ${d.opp}!`);
+    B.mode = 'online';
+    if (!B.online) { if ($('#view-battle').hidden || !$('#battle').hidden) showView('battle'); renderSetup(); }
+    return;
+  }
+  if (d.t === 'mstate' && O.match && d.mid === O.match.mid) { O.match.teams = d.teams; return renderSoon(); }
+  if (d.t === 'mend' && O.match && d.mid === O.match.mid) { O.match = null; toast(d.reason || 'Combate cancelado'); return renderSoon(); }
+  if (d.t === 'mstart' && O.match && d.mid === O.match.mid) {
+    if (O.role === 'guest' && (!O.roster || O.roster.ver !== d.ver)) { O.deferStart = d; O.msg = 'Recibiendo los cambios del anfitrión…'; return renderSoon(); }
+    return launchOnline(d);
+  }
+  if (d.t === 'mmsg' && d.msg) {
+    const o = B.online;
+    if (d.msg.t === 'act') return onAct(d.msg);
+    if (d.msg.t === 'bye') {
+      if (o && o.mid === d.mid && !o.ended) {
+        o.ended = true; o.endMsg = 'Tu rival ha abandonado el combate.'; B.busy = false;
+        $('#msg').textContent = o.endMsg;
+        $('#moves').innerHTML = ''; $('#fleeBtn').disabled = false;
+        toast('Tu rival ha abandonado el combate');
+      }
+    }
   }
 }
-function guestStart(d) {
-  send({ t: 'ready', gid: d.gid });
-  if (d.gid === O.lastGid) return;
-  O.lastGid = d.gid;
-  launchOnline(d);
+let chTimer = null;
+function closeChallengeModal() { clearTimeout(chTimer); if ($('#chBox')) closeModal(); }
+function showChallenge(d) {
+  if (B.online || O.match) return toServer({ t: 'answer', cid: d.cid, ok: false });
+  const ar = myArenas().find(a => a.id === d.arenaId);
+  openModal(`<div id="chBox"><h3>⚔️ ¡Te retan!</h3>
+    <p class="tip" style="margin:0 0 12px"><b>${esc(d.fromName)}</b> te reta a un combate <b>${FMT_LABEL[d.format]}</b>${ar ? ' en <b>' + esc(ar.name) + '</b>' : ''}.</p>
+    <div class="row"><button class="btn" id="chNo">Rechazar</button><button class="btn primary" id="chYes">¡Aceptar!</button></div></div>`);
+  sfx('appear');
+  const ans = ok => { clearTimeout(chTimer); toServer({ t: 'answer', cid: d.cid, ok }); closeModal(); };
+  $('#chYes').onclick = () => ans(true);
+  $('#chNo').onclick = () => ans(false);
+  clearTimeout(chTimer); chTimer = setTimeout(() => { if ($('#chBox')) ans(false); }, 30000);
+}
+function formatButtons(cur, attr) {
+  return `<div class="mode">${Object.keys(FMT_LABEL).map(k => `<button type="button" data-${attr}="${k}" class="${k === cur ? 'on' : ''}">${FMT_LABEL[k]}</button>`).join('')}</div>`;
+}
+function openChallengeDialog(pid, name) {
+  const st = { format: 'single', arenaId: (myArenas()[0] || {}).id };
+  const draw = () => {
+    openModal(`<h3>⚔️ Retar a ${esc(name)}</h3>
+      <p class="tip" style="margin:0 0 8px">Formato</p>${formatButtons(st.format, 'cfmt')}
+      <p class="tip" style="margin:12px 0 8px">Escenario</p>
+      <div class="arena-picks">${myArenas().map(a => `<button type="button" class="apick ${a.id === st.arenaId ? 'on' : ''}" data-carena="${a.id}">${arenaThumb(a)}<b>${esc(a.name)}</b></button>`).join('')}</div>
+      <div class="row"><button class="btn" data-close>Cancelar</button><button class="btn primary" id="chSend">Enviar reto</button></div>`, 'wide');
+    $$('#modalCard [data-cfmt]').forEach(b => b.onclick = () => { st.format = b.dataset.cfmt; draw(); });
+    $$('#modalCard [data-carena]').forEach(b => b.onclick = () => { st.arenaId = b.dataset.carena; draw(); });
+    $('#chSend').onclick = () => { toServer({ t: 'challenge', to: pid, format: st.format, arenaId: st.arenaId }); closeModal(); };
+  };
+  draw();
+}
+function openTourDialog() {
+  const free = O.players.filter(p => !p.busy);
+  const st = { format: 'single', arenaId: (S.arenas[0] || {}).id, pids: free.map(p => p.pid) };
+  const draw = () => {
+    openModal(`<h3>🏆 Organizar torneo</h3>
+      <p class="tip" style="margin:0 0 8px">Formato de todos los combates</p>${formatButtons(st.format, 'tfmt')}
+      <p class="tip" style="margin:12px 0 8px">Escenario</p>
+      <div class="arena-picks">${S.arenas.map(a => `<button type="button" class="apick ${a.id === st.arenaId ? 'on' : ''}" data-tarena="${a.id}">${arenaThumb(a)}<b>${esc(a.name)}</b></button>`).join('')}</div>
+      <p class="tip" style="margin:12px 0 8px">Participantes (${st.pids.length})</p>
+      <div class="tour-pl">${free.map(p => `<label class="check"><input type="checkbox" data-tpid="${p.pid}" ${st.pids.includes(p.pid) ? 'checked' : ''}> ${esc(p.name)}${p.pid === 'host' ? ' (tú)' : ''}</label>`).join('') || '<p class="note">No hay jugadores libres.</p>'}</div>
+      <p class="note">El cuadro se sortea al azar. Si sois impares, alguien pasa directo a la siguiente ronda. Cada ronda empieza sola cuando acaba la anterior.</p>
+      <div class="row"><button class="btn" data-close>Cancelar</button><button class="btn primary" id="tGo" ${st.pids.length < 2 ? 'disabled' : ''}>¡Empezar torneo!</button></div>`, 'wide');
+    $$('#modalCard [data-tfmt]').forEach(b => b.onclick = () => { st.format = b.dataset.tfmt; draw(); });
+    $$('#modalCard [data-tarena]').forEach(b => b.onclick = () => { st.arenaId = b.dataset.tarena; draw(); });
+    $$('#modalCard [data-tpid]').forEach(b => b.onchange = () => { st.pids = b.checked ? st.pids.concat(b.dataset.tpid) : st.pids.filter(x => x !== b.dataset.tpid); draw(); });
+    $('#tGo').onclick = () => { closeModal(); startTour(st.format, st.arenaId, st.pids); };
+  };
+  draw();
+}
+function teamThumbs(ids, list) {
+  return (ids || []).map(id => list.find(f => f.id === id)).filter(Boolean).map(f => `<img src="${esc(src(f.img))}" alt="" title="${esc(f.name)}">`).join('') || '<span class="muted small">Todavía eligiendo…</span>';
+}
+function pickGrid(list, chosen, n, locked) {
+  return `<div class="pick-grid">${list.map(f => {
+    const order = chosen.map((id, k) => id === f.id ? k + 1 : 0).filter(Boolean);
+    return `<button class="pick ${order.length ? 'on' : ''}" data-oteam="${f.id}" ${locked ? 'disabled' : ''}>
+      ${order.length ? `<span class="badge">${n > 1 ? order.map(o => o + 'º').join(' ') : '✔'}</span>` : ''}
+      <img src="${esc(src(f.img))}" alt=""><b>${esc(f.name)}</b><small>PS ${f.hp} · ATQ ${f.atk} · DEF ${f.def} · VEL ${f.spd}</small></button>`;
+  }).join('')}</div>`;
+}
+function bracketHTML(T) {
+  if (!T) return '';
+  const nm = (x, k) => x[k] ? `<span class="${x.w === k ? 'tw' : x.w ? 'tl' : ''}">${esc(x[k])}</span>` : '<span class="muted">— pase directo —</span>';
+  return `<div class="on-card" style="margin-top:14px"><h3>🏆 Torneo · ${FMT_LABEL[T.format]}</h3>
+    ${T.champion ? `<p class="on-status ok" style="font-size:18px">👑 Campeón: ${esc(T.champion)}</p>` : ''}
+    <div class="bracket">${T.rounds.map((r, ri) => `<div class="bround"><div class="muted small">${ri === T.rounds.length - 1 && r.length === 1 ? 'FINAL' : r.length === 2 ? 'SEMIFINAL' : 'RONDA ' + (ri + 1)}</div>
+      ${r.map(x => `<div class="bmatch ${x.live ? 'live' : ''}">${nm(x, 'a')}<i>vs</i>${nm(x, 'b')}${x.live ? '<em>⚔️ en juego</em>' : ''}</div>`).join('')}</div>`).join('')}</div></div>`;
+}
+function renderOnline() {
+  const el = $('#onlineArea');
+  if (typeof window.Peer !== 'function') { el.innerHTML = `<div class="empty"><p>No se pudo cargar el modo online. Comprueba tu conexión a internet y recarga la página.</p></div>`; return; }
+  if (O.phase === 'connecting') { el.innerHTML = `<div class="on-card" style="text-align:center"><h3>Conectando…</h3><p class="note">${esc(O.msg || 'Un momento.')}</p></div>`; return; }
+  if (O.phase === 'room') {
+    const L = O.lobby, inc = O.incoming;
+    const head = `<div class="on-card" style="text-align:center">
+        <div class="muted small">CÓDIGO DE LA SALA</div><div class="on-code">${esc(O.code.toUpperCase())}</div>
+        ${O.role === 'host' ? '<p class="note">Tus amigos abren este mismo enlace, pulsan «🌐 Online», escriben su nombre y este código. Todos juegan con tus personajes.</p>'
+          : `<div class="on-status ${connected() ? 'ok' : 'bad'}">${connected() ? '✔ Conectado a la sala' : '⚠️ Sin conexión con el anfitrión'}</div>`}
+        ${inc ? `<p class="note">Recibiendo los personajes del anfitrión… ${inc.total ? Math.round(inc.got / inc.total * 100) + '%' : ''}</p><div class="progress"><div style="width:${inc.total ? Math.round(inc.got / inc.total * 100) : 5}%"></div></div>` : ''}
+      </div>`;
+    if (O.match) {
+      const M = O.match, n = fmtN(M.format), list = myList(), locked = !!M.teams[M.side];
+      O.myTeam = O.myTeam.filter(id => list.some(f => f.id === id)).slice(-n);
+      const ar = myArenas().find(a => a.id === M.arenaId), oppTeam = M.teams[1 - M.side];
+      el.innerHTML = head + `
+        <div class="on-card" style="margin-top:14px;text-align:center"><h3>⚔️ ${esc(O.name || 'Tú')} vs ${esc(M.opp)}</h3>
+          <p class="note">${FMT_LABEL[M.format]}${ar ? ' · ' + esc(ar.name) : ''}${M.tour ? ' · 🏆 Torneo' : ''}</p></div>
+        ${list.length ? `<div class="on-grid" style="margin-top:14px">
+          <div><h3 class="sub">Tu equipo · elige ${n}${n === 3 ? ' (salen en ese orden)' : ''}</h3>${pickGrid(list, O.myTeam, n, locked)}</div>
+          <div><h3 class="sub">Equipo de ${esc(M.opp)}</h3><div class="on-card"><div class="on-team">${oppTeam ? teamThumbs(oppTeam, list) : '<span class="muted small">Eligiendo…</span>'}</div></div>
+            <p class="on-status ${oppTeam ? 'ok' : 'wait'}">${oppTeam ? '✔ Listo' : '⏳ Eligiendo equipo…'}</p></div>
+        </div>
+        <button class="big-btn" data-on="ready" ${locked || O.myTeam.length !== n ? 'disabled' : ''}>${locked ? 'ESPERANDO A ' + esc(M.opp.toUpperCase()) + '…' : '¡LISTO!'}</button>` : '<p class="note" style="text-align:center">Esperando los personajes del anfitrión…</p>'}
+        ${O.msg ? `<p class="on-status wait" style="text-align:center">${esc(O.msg)}</p>` : ''}
+        <p style="text-align:center;margin-top:12px"><button class="btn sm danger" data-on="mquit">Cancelar el combate</button></p>`;
+      return;
+    }
+    const ps = L ? L.players : [], me = O.pid, meBusy = ps.some(p => p.pid === me && p.busy);
+    el.innerHTML = head + `
+      <div class="on-card" style="margin-top:14px"><h3>👥 Jugadores en la sala (${ps.length})</h3>
+        <div class="plist">${ps.map(p => `<div class="prow"><span class="pdot ${p.busy ? 'busy' : ''}"></span><b>${esc(p.name)}</b>${p.pid === me ? ' <span class="muted small">(tú)</span>' : ''}${p.pid === 'host' ? ' <span class="muted small">👑 anfitrión</span>' : ''}
+          <span class="pst">${p.busy ? '⚔️ en combate' : 'libre'}</span>
+          ${p.pid !== me && !p.busy && !meBusy && list0() ? `<button class="btn sm primary" data-chal="${p.pid}" data-cname="${esc(p.name)}">⚔️ Retar</button>` : ''}</div>`).join('') || '<p class="note">Conectando…</p>'}</div>
+        ${ps.length < 2 ? '<p class="note" style="margin-top:8px">Cuando entren más jugadores podréis retaros entre vosotros.</p>' : ''}
+      </div>
+      ${L && L.tour ? bracketHTML(L.tour) : ''}
+      ${O.role === 'host' ? `<p style="text-align:center;margin-top:14px">${!O.tour || O.tour.champion ? '<button class="btn primary" data-on="tour">🏆 Organizar torneo</button>' : '<button class="btn danger sm" data-on="tourCancel">Cancelar torneo</button>'}</p>` : ''}
+      <p style="text-align:center;margin-top:12px"><button class="btn sm danger" data-on="close">${O.role === 'host' ? 'Cerrar la sala' : 'Salir de la sala'}</button></p>`;
+    return;
+  }
+  el.innerHTML = `
+    <div class="on-card"><h3>Tu nombre</h3><input type="text" id="nameIn" maxlength="16" placeholder="Cómo te verán los demás" value="${esc(O.name)}"></div>
+    <div class="on-grid" style="margin-top:14px">
+      <div class="on-card"><h3>🏠 Crear una sala</h3>
+        <p class="note">Serás el anfitrión: todos juegan con <b>tus personajes y escenarios</b>. Tus amigos entran con un código, se retan entre ellos (o contigo) y puedes montar torneos.</p>
+        <button class="btn primary" data-on="host" style="margin-top:12px">Crear sala</button></div>
+      <div class="on-card"><h3>🎮 Entrar en una sala</h3>
+        <p class="note">Escribe el código que te ha dado el anfitrión.</p>
+        <div class="on-row" style="margin-top:8px"><input type="text" id="codeIn" maxlength="4" placeholder="CÓDIGO"><button class="btn" data-on="joinCode">Entrar</button></div>
+      </div>
+    </div>
+    ${O.msg ? `<p class="on-status bad" style="text-align:center">${esc(O.msg)}</p>` : ''}
+    <p class="note" style="margin-top:12px">Todos necesitáis conexión a internet y abrir este mismo enlace. El anfitrión tiene que tener la página abierta mientras jugáis.</p>`;
+}
+const list0 = () => myList().length > 0;
+function readName() {
+  const v = (($('#nameIn') || {}).value || '').trim().slice(0, 16);
+  if (!v) { O.msg = 'Escribe tu nombre primero.'; renderOnline(); return null; }
+  O.name = v; try { localStorage.setItem('pokemdk-name', v); } catch (e) {}
+  return v;
+}
+function guestConn(conn) {
+  O.hostConn = conn;
+  conn.on('data', onClient);
+  conn.on('close', () => {
+    if (O.hostConn !== conn) return;
+    O.hostConn = null;
+    if (B.online && !B.online.ended) { B.online.ended = true; B.online.endMsg = 'Se ha perdido la conexión con la sala.'; B.busy = false; $('#msg').textContent = B.online.endMsg; $('#moves').innerHTML = ''; $('#fleeBtn').disabled = false; }
+    toast('Se ha perdido la conexión con la sala');
+    if (!B.online) { O.msg = O.msg || 'Se ha perdido la conexión con el anfitrión.'; closeOnline(true); }
+  });
+}
+function hostAccept(conn) {
+  conn.on('open', async () => {
+    if (O.players.length >= 16) { rawSend(conn, { t: 'info', msg: 'La sala está llena.' }); setTimeout(() => conn.close(), 500); return; }
+    const pid = uid();
+    O.conns[pid] = conn;
+    O.players.push({ pid, name: 'Jugador ' + O.players.length, busy: null });
+    conn.on('data', d => onServer(pid, d));
+    conn.on('close', () => dropPlayer(pid));
+    await rawSend(conn, { t: 'welcome', pid, code: O.code });
+    broadcastLobby();
+    await sendRosterTo(conn);
+  });
 }
 function launchOnline(sm) {
-  const host = O.role === 'host', list = host ? S.fighters : O.roster.fighters;
+  const host = O.role === 'host', list = myList();
   const byId = id => list.find(f => f.id === id);
-  const t0 = (sm.hostTeam || []).map(byId), t1 = (sm.guestTeam || []).map(byId);
-  if (!t0.length || t0.length !== t1.length || t0.some(x => !x) || t1.some(x => !x)) { toast('No se encontraron los personajes de la partida'); return; }
-  const arenas = host ? S.arenas : O.roster.arenas;
-  const arena = arenas.find(a => a.id === sm.arenaId) || arenas[0];
-  if (!host) { O.savedStatus = S.settings.status; S.settings.status = O.roster.status; }
+  const n = fmtN(sm.format);
+  const t0 = (sm.teams[0] || []).map(byId), t1 = (sm.teams[1] || []).map(byId);
+  if (t0.length !== n || t1.length !== n || t0.some(x => !x) || t1.some(x => !x)) { toast('No se encontraron los personajes del combate'); return; }
+  const arena = myArenas().find(a => a.id === sm.arenaId) || myArenas()[0];
+  if (!host && O.roster) { O.savedStatus = S.settings.status; S.settings.status = O.roster.status; }
   RNG = seeded(sm.seed >>> 0);
-  B.online = { side: host ? 0 : 1, gid: sm.gid, turn: 0, acts: {}, mine: {}, hpAt: {}, waiting: false, ended: false, warned: false };
+  O.msg = '';
+  B.online = { side: O.match.side, mid: sm.mid, gid: sm.gid, turn: 0, acts: {}, mine: {}, hpAt: {}, waiting: false, ended: false, warned: false };
   showView('battle');
   startBattle({ teams: [t0.map(clone), t1.map(clone)], arena });
 }
+const sendMatch = msg => { const o = B.online; if (o) toServer({ t: 'mmsg', mid: o.mid, msg }); };
 function onAct(d) {
   const o = B.online;
   if (!o || d.gid !== o.gid || d.side !== 1 - o.side || !Array.isArray(d.acts) || !Number.isInteger(d.turn)) return;
-  (o.acts[d.turn] = o.acts[d.turn] || {})[d.side] = d.acts.slice(0, 2);
+  (o.acts[d.turn] = o.acts[d.turn] || {})[d.side] = d.acts.slice(0, 3);
   if (!o.warned && o.hpAt[d.turn] && d.hp && d.hp !== o.hpAt[d.turn]) { o.warned = true; toast('⚠️ La partida se ha desincronizado. Volved a la sala y empezad otra vez.'); }
   if (o.waiting) tryResolveOnline();
 }
@@ -4302,7 +4554,7 @@ function onlineSubmit() {
   const acts = B.pending.map(a => ({ slot: a.C.slot, mi: a.mi, t: a.target ? B.units.indexOf(a.target) : -1, mega: !!a.mega }));
   o.mine[t] = { t: 'act', gid: o.gid, turn: t, side: o.side, acts, hp: o.hpAt[t] };
   (o.acts[t] = o.acts[t] || {})[o.side] = acts;
-  send(o.mine[t]);
+  sendMatch(o.mine[t]);
   B.busy = true; o.waiting = true;
   setMoves(false); $('#fleeBtn').disabled = false;
   $$('#arena .hud').forEach(h => h.classList.remove('active'));
@@ -4330,47 +4582,60 @@ function tryResolveOnline() {
   }
   resolveTurn(list.concat(B.forced));
 }
-function onlineBattleEnded() { if (B.online) B.online.ended = true; }
+function onlineBattleEnded(side) {
+  const o = B.online; if (!o) return;
+  if (!o.ended && side != null) toServer({ t: 'mresult', mid: o.mid, side });
+  o.ended = true;
+}
 function onlineBackToRoom() {
   RNG = Math.random;
   if (O.savedStatus) { S.settings.status = O.savedStatus; O.savedStatus = null; }
-  B.online = null; O.pendingStart = null; O.msg = '';
+  const fin = B.online && B.online.mid;
+  B.online = null; if (O.match && O.match.mid === fin) O.match = null; O.msg = '';
   B.mode = 'online';
   renderSetup();
 }
-function onlineQuit() { if (B.online) send({ t: 'bye' }); leaveBattle(); }
+function onlineQuit() { const o = B.online; if (o && !o.ended) toServer({ t: 'mquit', mid: o.mid }); leaveBattle(); }
 async function onlineCloseRoom() { return closeOnline(false); }
 async function closeOnline(silent) {
-  if (!silent && O.conn) { await send({ t: 'bye' }); await wait(150); }
-  try { if (O.conn) O.conn.close(); } catch (e) {}
+  if (O.role === 'host') { Object.values(O.conns).forEach(c => rawSend(c, { t: 'closed' })); await wait(200); }
+  else if (!silent && O.match) toServer({ t: 'mquit', mid: O.match.mid });
+  Object.values(O.conns).forEach(c => { try { c.close(); } catch (e) {} });
+  try { if (O.hostConn) O.hostConn.close(); } catch (e) {}
   try { if (O.peer) O.peer.destroy(); } catch (e) {}
   const keepMsg = silent ? O.msg : '';
-  Object.assign(O, { phase: 'idle', role: null, code: '', peer: null, conn: null, opTeam: [], cfg: null, roster: null, incoming: null, pendingStart: null, deferStart: null, lastGid: null, msg: keepMsg, sending: false });
+  Object.assign(O, { phase: 'idle', role: null, code: '', peer: null, conns: {}, hostConn: null, pid: null, players: [], challenges: {}, matches: {}, tour: null,
+    lobby: null, roster: null, incoming: null, match: null, deferStart: null, lastGid: null, msg: keepMsg });
+  closeChallengeModal();
   if (B.online) { RNG = Math.random; if (O.savedStatus) { S.settings.status = O.savedStatus; O.savedStatus = null; } B.online = null; }
   renderSetup();
 }
-setInterval(() => { const o = B.online; if (o && O.conn) for (const t of [o.turn - 1, o.turn]) if (o.mine[t]) send(o.mine[t]); }, 2500);
-window.addEventListener('beforeunload', () => { try { if (O.conn) O.conn.send({ t: 'bye' }); } catch (e) {} });
+setInterval(() => { const o = B.online; if (o && !o.ended) for (const t of [o.turn - 1, o.turn]) if (o.mine[t]) sendMatch(o.mine[t]); }, 2500);
+window.addEventListener('beforeunload', () => {
+  try { if (O.role === 'host') Object.values(O.conns).forEach(c => c.send({ t: 'closed' })); else if (O.hostConn) O.hostConn.close(); } catch (e) {}
+});
 
 $('#onlineArea').addEventListener('click', async e => {
-  const t = e.target.closest('[data-on],[data-oteam],[data-oformat],[data-oarena]'); if (!t) return;
+  const t = e.target.closest('[data-on],[data-oteam],[data-chal]'); if (!t) return;
   sfx('select');
+  if (t.dataset.chal) return openChallengeDialog(t.dataset.chal, t.dataset.cname);
   if (t.dataset.oteam) {
-    const n = O.phase === 'hosting' ? onNeed() : (O.cfg && O.cfg.format === 'double' ? 2 : 1);
-    if (n === 1) O.myTeam = [t.dataset.oteam]; else { O.myTeam.push(t.dataset.oteam); while (O.myTeam.length > 2) O.myTeam.shift(); }
-    if (O.role === 'host') sendCfg(); else if (O.myTeam.length === n) send({ t: 'pick', team: O.myTeam });
+    const M = O.match; if (!M || M.teams[M.side]) return;
+    const n = fmtN(M.format);
+    if (n === 1) O.myTeam = [t.dataset.oteam]; else { O.myTeam.push(t.dataset.oteam); while (O.myTeam.length > n) O.myTeam.shift(); }
     return renderOnline();
   }
-  if (t.dataset.oformat) {
-    O.format = t.dataset.oformat;
-    O.myTeam = O.myTeam.filter(id => getF(id)).slice(-onNeed());
-    for (let k = 0; O.myTeam.length < onNeed() && S.fighters.length; k++) O.myTeam.push(S.fighters[k % S.fighters.length].id);
-    O.opTeam = []; sendCfg(); return renderOnline();
-  }
-  if (t.dataset.oarena) { O.arenaId = t.dataset.oarena; sendCfg(); return renderOnline(); }
   const act = t.dataset.on;
+  if (act === 'ready') { const M = O.match; if (M && O.myTeam.length === fmtN(M.format)) { M.teams[M.side] = O.myTeam.slice(); toServer({ t: 'mpick', mid: M.mid, team: O.myTeam }); renderOnline(); } return; }
+  if (act === 'mquit') { const M = O.match; if (M) { toServer({ t: 'mquit', mid: M.mid }); O.match = null; renderOnline(); } return; }
+  if (act === 'tour') return openTourDialog();
+  if (act === 'tourCancel') {
+    if (O.tour) { Object.values(O.matches).forEach(m => { if (m.tourRef && !m.started) finishMatch(m, null, { reason: 'El anfitrión ha cancelado el torneo.' }); }); O.tour = null; broadcastLobby(); }
+    return;
+  }
   if (act === 'host') {
-    if (O.busy) return; O.busy = true; O.msg = 'Creando la partida…'; O.phase = 'connecting'; renderOnline();
+    if (!readName() || O.busy) return;
+    O.busy = true; O.msg = 'Creando la sala…'; O.phase = 'connecting'; renderOnline();
     try {
       let peer = null, code = '';
       for (let k = 0; k < 5 && !peer; k++) {
@@ -4378,46 +4643,37 @@ $('#onlineArea').addEventListener('click', async e => {
         try { peer = await openPeer(PEER_PREFIX + code); } catch (err) { if (!(err && err.type === 'unavailable-id')) throw err; }
       }
       if (!peer) throw new Error('noid');
-      O.peer = peer; O.code = code; O.role = 'host';
-      peer.on('connection', conn => {
-        if (O.conn && O.conn.open) { conn.on('open', () => { try { conn.send({ t: 'full' }); } catch (e) {} setTimeout(() => conn.close(), 500); }); return; }
-        attachConn(conn);
-      });
+      Object.assign(O, { peer, code, role: 'host', pid: 'host', players: [{ pid: 'host', name: O.name, busy: null }], conns: {}, matches: {}, challenges: {}, tour: null, ver: Date.now(), sig: rosterSig() });
+      peer.on('connection', hostAccept);
       peer.on('disconnected', () => { try { peer.reconnect(); } catch (e) {} });
-      O.phase = 'hosting'; O.msg = '';
-      O.myTeam = S.fighters.slice(0, onNeed()).map(f => f.id); O.arenaId = O.arenaId || S.arenas[0].id;
-    } catch (err) { O.phase = 'idle'; O.msg = 'No se pudo crear la partida. Comprueba tu conexión a internet.'; }
+      O.phase = 'room'; O.msg = '';
+      O.lobby = lobbySnap();
+    } catch (err) { O.phase = 'idle'; O.msg = 'No se pudo crear la sala. Comprueba tu conexión a internet.'; }
     O.busy = false; return renderOnline();
   }
   if (act === 'joinCode') {
+    if (!readName()) return;
     const code = ($('#codeIn').value || '').trim().toLowerCase();
     if (!/^[a-z0-9]{4}$/.test(code)) { O.msg = 'Escribe un código de 4 letras.'; return renderOnline(); }
-    if (O.busy) return; O.busy = true; O.msg = 'Buscando la partida…'; O.phase = 'connecting'; renderOnline();
+    if (O.busy) return; O.busy = true; O.msg = 'Buscando la sala…'; O.phase = 'connecting'; renderOnline();
     try {
       const peer = await openPeer(null);
-      O.peer = peer; O.code = code; O.role = 'guest'; O.myTeam = [];
+      O.peer = peer; O.code = code; O.role = 'guest';
       const conn = peer.connect(PEER_PREFIX + code, { reliable: true, serialization: 'json' });
-      attachConn(conn);
+      guestConn(conn);
       await new Promise((res, rej) => {
         if (conn.open) return res();
         const to = setTimeout(() => rej(new Error('timeout')), 15000);
         peer.on('error', err => { clearTimeout(to); rej(err); });
         conn.on('open', () => { clearTimeout(to); res(); });
       });
-      O.phase = 'joined'; O.msg = '';
+      O.phase = 'room'; O.msg = '';
     } catch (err) {
-      O.msg = err && err.type === 'peer-unavailable' ? 'No hay ninguna partida con ese código.' : 'No se pudo conectar con la partida. Comprueba el código y tu conexión.';
+      O.msg = err && err.type === 'peer-unavailable' ? 'No hay ninguna sala con ese código.' : 'No se pudo conectar con la sala. Comprueba el código y tu conexión.';
       try { O.peer && O.peer.destroy(); } catch (e) {}
-      O.phase = 'idle'; O.peer = null;
+      O.phase = 'idle'; O.peer = null; O.role = null;
     }
     O.busy = false; return renderOnline();
-  }
-  if (act === 'start') {
-    if (O.pendingStart || !connected()) return;
-    if (O.sig !== rosterSig()) { O.msg = 'Enviando tus cambios a tu rival…'; O.sending = true; renderOnline(); await sendRoster(); O.sending = false; O.msg = ''; }
-    O.pendingStart = { t: 'start', gid: uid(), seed: Math.floor(Math.random() * 4294967296), format: O.format, arenaId: O.arenaId, hostTeam: O.myTeam.slice(), guestTeam: O.opTeam.slice(), ver: O.ver };
-    send(O.pendingStart);
-    return renderOnline();
   }
   if (act === 'close') return closeOnline(false);
 });
