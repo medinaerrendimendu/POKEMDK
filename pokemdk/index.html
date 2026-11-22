@@ -45,6 +45,8 @@ main{max-width:1100px;margin:0 auto;padding:0 22px 40px}
 
 .panel{background:var(--panel);border:2px solid var(--line);border-radius:16px;padding:22px}
 .panel h2{font-family:var(--pixel);font-size:16px;margin:0 0 18px;color:#fff;line-height:1.5}
+.setup-h{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
+.setup-h .btn{font-family:var(--sans)}
 .btn{border:2px solid var(--line);background:#33375a;color:#fff;border-radius:10px;padding:9px 14px;font-weight:800;font-size:14px;display:inline-flex;align-items:center;justify-content:center;gap:6px}
 .btn:hover{background:#3d4270}
 .btn.sm{padding:6px 10px;font-size:12px;border-radius:8px}
@@ -409,7 +411,7 @@ body.ts-lock{overflow:hidden}
   <!-- ============ COMBATE ============ -->
   <section id="view-battle">
     <div id="setup" class="panel">
-      <h2>Prepara el combate</h2>
+      <h2 class="setup-h">Prepara el combate <button class="btn sm" id="menuMusicBtn" type="button" title="Elegir la música de esta pantalla">🎵 Música</button></h2>
       <div class="mode" id="modeRow">
         <button data-mode="cpu" class="on">🤖 Contra la CPU</button>
         <button data-mode="pvp">🎮 2 jugadores (mismo dispositivo)</button>
@@ -1579,6 +1581,15 @@ function stopWinMusic() {
 function stopBattleSound() { Music.stop(); const v = $('#arena video.bgvid'); if (v) v.muted = true; }
 function stopAllMusic() { stopBattleSound(); stopWinMusic(); }
 /* música de la pantalla de selección de combate */
+const menuMusicSlot = () => audioSlot('set:menuMusic', S.settings.menuMusic, 'Música de la pantalla de selección (en bucle; si la recortas, se repite ese fragmento)', 'Sin música');
+function openMenuMusic() {
+  openModal(`<h3>🎵 Música de la pantalla de selección</h3>
+    <p class="tip" style="margin:0 0 12px">Es una música general, no depende de ningún escenario: suena aquí mientras eliges personajes y escenario, y se para al empezar el combate (el combate usa la música de su escenario).</p>
+    <div id="mmBox">${menuMusicSlot()}</div>
+    <div class="row"><button class="btn primary" data-close>Listo</button></div>`);
+  hydrateTrims($('#mmBox'));
+}
+$('#menuMusicBtn').onclick = openMenuMusic;
 function onSetupScreen() { return !$('#view-battle').hidden && $('#battle').hidden && $('#titleScr').hidden; }
 function playMenuMusic() {
   const st = S.settings;
@@ -3066,7 +3077,13 @@ function onTrimInput(el) {
   save();
 }
 const IMG_MAX = { 'f:img': 400, 'tf:img': 400, 'f:poseAtk': 400, 'f:poseHurt': 400, 'ar:bg': 1400, 'ar:platImg': 500 };
-function rerenderFor(key) { if (key.startsWith('ti:')) return renderTitleEditor(); (key.startsWith('ar:') || key.startsWith('set:') || key.startsWith('st:')) ? renderArenaEditor() : renderEditor(); }
+function rerenderFor(key) {
+  if (key === 'set:menuMusic') {
+    if (!$('#modal').hidden && $('#mmBox')) { $('#mmBox').innerHTML = menuMusicSlot(); hydrateTrims($('#mmBox')); }
+    if (onSetupScreen()) { Music.stop(); playMenuMusic(); }
+    if ($('#view-arenas').hidden) return;
+  }
+  if (key.startsWith('ti:')) return renderTitleEditor(); (key.startsWith('ar:') || key.startsWith('set:') || key.startsWith('st:')) ? renderArenaEditor() : renderEditor(); }
 async function handleUpload(input, file) {
   const key = input.dataset.key, t = target(key), type = input.dataset.type;
   if (!t || !file) return;
@@ -3765,6 +3782,7 @@ function onArenaField(e) {
 $('#aForm').addEventListener('input', e => { if (e.target.tagName !== 'SELECT' && e.target.type !== 'checkbox') onArenaField(e); });
 $('#aForm').addEventListener('change', onArenaField);
 editorCommon($('#aForm'));
+editorCommon($('#modalCard'));
 $('#aForm').addEventListener('click', async e => {
   const b = e.target.closest('[data-act]'); if (!b) return;
   const a = getArena(edA.sel); if (!a) return;
@@ -4510,7 +4528,13 @@ $('#tForm').addEventListener('click', e => {
   renderSetup();
   if (S.settings.title.enabled) showTitle(); else playMenuMusic();
 })();
-if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) navigator.serviceWorker.register('sw.js').catch(() => {});
+if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) {
+  /* busca versión nueva en cada apertura; si la hay, recarga una vez para usarla */
+  const hadCtrl = !!navigator.serviceWorker.controller;
+  let reloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', () => { if (hadCtrl && !reloaded && $('#battle').hidden) { reloaded = true; location.reload(); } });
+  navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(r => r.update()).catch(() => {});
+}
 </script>
 </body>
 </html>
