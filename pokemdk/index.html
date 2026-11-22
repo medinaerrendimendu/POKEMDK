@@ -55,6 +55,14 @@ body.sel-on{background:transparent}
 .modal.side{background:transparent;place-items:end;pointer-events:none;padding:12px}
 .modal.side .card{pointer-events:auto;width:min(440px,100%);max-height:calc(100vh - 24px);overflow-y:auto;box-shadow:0 10px 40px rgba(0,0,0,.6)}
 @media (max-width:820px){.modal.side{place-items:end stretch}.modal.side .card{width:100%;max-height:55vh}}
+.bal{border:2px solid var(--line);border-radius:12px;padding:10px 12px;background:rgba(0,0,0,.15)}
+.bal-head{display:flex;justify-content:space-between;align-items:center;gap:8px;font-weight:800}
+.bal-head b{font-family:var(--pixel);font-size:11px;color:var(--accent)}
+.bal.over .bal-head b{color:#ff6b6b}
+.bal-bar{height:10px;border-radius:6px;background:#1a1c33;overflow:hidden;margin:8px 0}
+.bal-bar i{display:block;height:100%;background:linear-gradient(90deg,#38b000,#ffbe0b);transition:width .15s}
+.bal.over .bal-bar i{background:#ff4d4d}
+.bal .arow{flex-wrap:wrap}
 .mlist{display:flex;flex-direction:column;gap:10px;margin-top:6px}
 .mlist .file-btn{align-self:flex-start}
 .setup-h{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
@@ -1406,6 +1414,7 @@ function normSettings(s = {}) {
     menuMusics: Array.isArray(s.menuMusics) ? normList(s.menuMusics) : normList([{ ref: s.menuMusic, refTrim: s.menuMusicTrim }]),
     title: normTitle(s.title),
     sel: normSel(s.sel),
+    balance: { on: !s.balance || s.balance.on !== false, budget: num(s.balance && s.balance.budget, 11, 0, 60) },
     muted: !!s.muted
   };
 }
@@ -3331,7 +3340,7 @@ function renderList() {
   $('#fList').innerHTML = S.fighters.map(f => `
     <button class="fitem ${f.id === ed.sel ? 'on' : ''}" data-id="${f.id}">
       <img src="${esc(src(f.img))}" alt="">
-      <span><b>${esc(f.name)}${f.transform.enabled ? ' ✨' : ''}</b><small>${f.attacks.length} ataque${f.attacks.length === 1 ? '' : 's'} · PS ${f.hp}</small></span>
+      <span><b>${esc(f.name)}${f.transform.enabled ? ' ✨' : ''}${overBudget(f) ? ' ⚠️' : ''}</b><small>${f.attacks.length} ataque${f.attacks.length === 1 ? '' : 's'} · PS ${f.hp}</small></span>
     </button>`).join('') || '<p class="muted" style="margin:6px 4px">Aún no hay personajes.</p>';
 }
 $('#fList').onclick = e => { const b = e.target.closest('.fitem'); if (b) { ed.sel = b.dataset.id; renderEditor(); } };
@@ -3514,7 +3523,50 @@ function atkCard(a, i) {
     </div>
   </div>`;
 }
-function renderForm() {
+/* ---- sistema de puntos para equilibrar personajes ----
+   Cada punto multiplica una estadística por 1,06 (la velocidad cuenta 0,35 porque solo decide quién va primero).
+   Bajar una estadística por debajo de la base (PS 100, resto 50) devuelve puntos. La transformación cuenta la mitad. */
+const BAL = { base: { hp: 100, atk: 50, def: 50, spd: 50 }, w: { hp: 1, atk: 1, def: 1, spd: .35 }, step: Math.log(1.06) };
+const statPts = (k, v) => BAL.w[k] * Math.log(Math.max(1, v) / BAL.base[k]) / BAL.step;
+const tfPts = f => !f.transform.enabled ? 0 : ['atk', 'def', 'spd'].reduce((s, k) => s + .5 * BAL.w[k] * Math.log((f[k] + f.transform[k]) / Math.max(1, f[k])) / BAL.step, 0);
+const fighterPts = f => ['hp', 'atk', 'def', 'spd'].reduce((s, k) => s + statPts(k, f[k]), 0) + tfPts(f);
+const balOn = () => S.settings.balance.on;
+const overBudget = f => balOn() && fighterPts(f) > S.settings.balance.budget + .05;
+function paintBal() {
+  const box = $('#balBox'), f = getF(ed.sel); if (!box || !f) return;
+  const b = S.settings.balance, used = fighterPts(f), over = b.on && used > b.budget + .05;
+  box.className = 'full bal' + (over ? ' over' : '');
+  box.innerHTML = `
+    <div class="bal-head"><span>⚖️ Puntos de estadísticas</span>${b.on ? `<b>${used.toFixed(1)} / ${b.budget}</b>` : '<span class="muted small">libre</span>'}</div>
+    ${b.on ? `<div class="bal-bar"><i style="width:${Math.max(0, Math.min(100, used / Math.max(1, b.budget) * 100))}%"></i></div>` : ''}
+    ${over ? `<p class="note" style="color:#ff8f8f;margin:0 0 8px">Se pasa por ${(used - b.budget).toFixed(1)} puntos. <button class="btn sm" data-act="balFit" type="button">⚖️ Ajustar automáticamente</button></p>` : ''}
+    <div class="arow">
+      <label class="check" style="margin:0"><input type="checkbox" data-bal="on" ${b.on ? 'checked' : ''}> Modo equilibrado</label>
+      ${b.on ? `<label style="display:flex;align-items:center;gap:6px;margin:0">Puntos para todos <input type="number" min="0" max="60" value="${b.budget}" data-bal="budget" style="width:70px"></label>` : ''}
+    </div>
+    <p class="note" style="margin-top:6px">${b.on ? 'Todos los personajes tienen los mismos puntos. Cada punto sube un 6% una estadística (la velocidad cuesta menos). Si bajas una estadística, ganas puntos para otra. La transformación también gasta puntos.' : 'Sin límite: puedes poner las estadísticas que quieras.'}</p>`;
+}
+/* sube el valor pedido solo hasta donde lleguen los puntos */
+function clampToBudget(f, apply) {
+  if (!balOn()) return;
+  const B = S.settings.balance.budget;
+  let guard = 400;
+  while (fighterPts(f) > B + .05 && guard-- > 0) if (!apply()) break;
+}
+function autoFit(f) {
+  const B = S.settings.balance.budget;
+  for (let i = 0; i < 600 && fighterPts(f) > B + .05; i++) {
+    /* quita de la estadística que más puntos gasta */
+    const parts = ['hp', 'atk', 'def', 'spd'].map(k => [k, statPts(k, f[k])]);
+    if (f.transform.enabled) ['atk', 'def', 'spd'].forEach(k => parts.push(['tf:' + k, f.transform[k] ? .5 * BAL.w[k] * Math.log((f[k] + f.transform[k]) / f[k]) / BAL.step : -1]));
+    parts.sort((a, b) => b[1] - a[1]);
+    const [k] = parts[0];
+    if (k.startsWith('tf:')) f.transform[k.slice(3)] = Math.max(0, f.transform[k.slice(3)] - 1);
+    else f[k] = Math.max(k === 'hp' ? 20 : 10, f[k] - 1);
+  }
+}
+function renderForm() { renderForm0(); paintBal(); }
+function renderForm0() {
   const f = getF(ed.sel), box = $('#fForm');
   if (!f) { box.innerHTML = `<div class="card empty"><p>Crea un personaje para empezar.</p></div>`; return; }
   const flipA = f.facing === 'right' ? 1 : -1, tf = f.transform;
@@ -3539,6 +3591,7 @@ function renderForm() {
         ${statField('data-f', 'atk', 'Ataque', 10, 150, f.atk)}
         ${statField('data-f', 'def', 'Defensa', 10, 150, f.def)}
         ${statField('data-f', 'spd', 'Velocidad (quién ataca primero)', 10, 150, f.spd)}
+        <div class="full bal" id="balBox"></div>
       </div>
     </div>
   </div>
@@ -3601,6 +3654,12 @@ function onFighterField(e) {
   const card = el.closest('.atk'), a = card ? f.attacks[+card.dataset.i] : null;
   const val = el.type === 'checkbox' ? el.checked : (el.type === 'range' || el.type === 'number') ? Number(el.value) : el.value;
   const out = el.closest('label')?.querySelector('output');
+  if (el.dataset.bal) {
+    const b = S.settings.balance;
+    if (el.dataset.bal === 'on') b.on = !!val; else b.budget = num(val, b.budget, 0, 60);
+    save(); renderList(); if (el.dataset.bal === 'on') paintBal(); else { const keep = el.selectionStart; paintBal(); const n = $('[data-bal="budget"]'); if (n) { n.focus(); try { n.setSelectionRange(keep, keep); } catch (_) {} } }
+    return;
+  }
   if (el.dataset.f) {
     const k = el.dataset.f;
     if (k === 'name') f.name = String(val).slice(0, 24) || 'Sin nombre';
@@ -3609,7 +3668,12 @@ function onFighterField(e) {
       const big = $('#fForm .drop.big img'); if (big) big.style.transform = `scaleX(${s})`;
       $('.pv-a img').style.setProperty('--flip', s);
     } else if (k === 'idle') { f.idle = val; $('.pv-a .idle').className = 'idle idle-' + val; }
-    else { f[k] = num(val, f[k], 1, 999); if (out) out.textContent = f[k]; }
+    else {
+      f[k] = num(val, f[k], 1, 999);
+      clampToBudget(f, () => { if (f[k] <= (k === 'hp' ? 20 : 10)) return false; f[k]--; return true; });
+      el.value = f[k]; if (out) out.textContent = f[k];
+      paintBal();
+    }
     renderList();
   } else if (el.dataset.entry) {
     f.entry.type = val;
@@ -3618,8 +3682,8 @@ function onFighterField(e) {
     if (k === 'enabled') tf.enabled = !!val;
     else if (k === 'name') tf.name = String(val).slice(0, 24);
     else if (k === 'color' || k === 'when') tf[k] = val;
-    else { tf[k] = num(val, tf[k], 0, 150); if (out) out.textContent = '+' + tf[k]; }
-    if (k === 'enabled') renderList();
+    else { tf[k] = num(val, tf[k], 0, 150); clampToBudget(f, () => { if (tf[k] <= 0) return false; tf[k]--; return true; }); el.value = tf[k]; if (out) out.textContent = '+' + tf[k]; paintBal(); renderList(); }
+    if (k === 'enabled') { renderList(); setTimeout(paintBal, 0); }
   } else if (a && el.dataset.a) {
     const k = el.dataset.a;
     if (k === 'name') a.name = String(val).slice(0, 24) || 'Ataque';
@@ -3693,6 +3757,11 @@ $('#fForm').addEventListener('input', e => { if (e.target.tagName !== 'SELECT' &
 $('#fForm').addEventListener('change', onFighterField);
 editorCommon($('#fForm'));
 
+$('#fForm').addEventListener('click', e => {
+  const b = e.target.closest('[data-act="balFit"]'); if (!b) return;
+  const f = getF(ed.sel); if (!f) return;
+  autoFit(f); save(true); renderForm(); renderList(); toast('Estadísticas ajustadas a los puntos ✔');
+});
 $('#fForm').addEventListener('click', async e => {
   const b = e.target.closest('[data-act]'); if (!b) return;
   const f = getF(ed.sel); if (!f) return;
