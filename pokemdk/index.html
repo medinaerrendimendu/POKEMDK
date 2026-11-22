@@ -4376,6 +4376,62 @@ $('.brand').style.cursor = 'pointer';
 $('.brand').title = 'Ver la pantalla de inicio';
 $('.brand').addEventListener('click', () => showTitle());
 
+/* ---- portada publicada en la web (portada.json junto a la app) ---- */
+async function portadaPack() {
+  const st = S.settings, t = clone(st.title);
+  const pack = { app: 'pokemdk-portada', stamp: Date.now(), title: t, f1name: getF(t.f1)?.name || '', f2name: getF(t.f2)?.name || '',
+    menuMusic: st.menuMusic, menuMusicTrim: st.menuMusicTrim, media: {} };
+  for (const id of usedMedia([t, st.menuMusic])) { const v = MEDIA[id]; if (v) pack.media[id] = v instanceof Blob ? await blobToDataURL(v) : v; }
+  return pack;
+}
+async function saveFile(name, blob) {
+  const dl = await Promise.race([DL, wait(1500).then(() => null)]);
+  if (dl) {
+    try { await dl.save({ filename: name, data: blob }); return true; }
+    catch (e) { if (e && e.code === 'declined') return false; }
+  }
+  try {
+    const url = URL.createObjectURL(blob), a = document.createElement('a');
+    a.href = url; a.download = name; document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 10000);
+    return true;
+  } catch (e) { return false; }
+}
+async function publishPortada() {
+  toast('Preparando la portada…');
+  const json = JSON.stringify(await portadaPack());
+  const ok = await saveFile('portada.json', new Blob([json], { type: 'application/json' }));
+  if (!ok) return toast('No se pudo guardar el archivo');
+  openModal(`<h3>🌐 Portada lista</h3>
+    <p class="tip" style="margin:0 0 10px">Se ha guardado <b>portada.json</b> (${(json.length / 1048576).toFixed(1)} MB) en tus descargas.</p>
+    <p class="tip" style="margin:0 0 10px">Súbelo a la carpeta <b>pokemdk</b> de tu repositorio de GitHub (junto a index.html). En 1–2 minutos, todo el que abra la web verá esta portada.</p>
+    <p class="note">Cada vez que cambies la portada, vuelve a pulsar «Publicar portada en la web» y sube el archivo nuevo. Lo que se edite en la web de cada uno se mantiene hasta que publiques una portada nueva.</p>
+    <div class="row"><button class="btn primary" data-close>Entendido</button></div>`);
+}
+async function loadPortada() {
+  if (!/^https?:/.test(location.protocol) || window.claude) return false;
+  try {
+    const r = await fetch('portada.json', { cache: 'no-cache' });
+    if (!r.ok) return false;
+    const p = await r.json();
+    if (!p || p.app !== 'pokemdk-portada' || !p.title || S.portadaStamp === p.stamp) return false;
+    for (const [id, val] of Object.entries(p.media || {})) {
+      if (/^[a-z0-9]+$/.test(id) && typeof val === 'string' && val.startsWith('data:')) {
+        MEDIA[id] = val;
+        try { await idb('media', 'readwrite', st => st.put(val, id)); } catch (e) {}
+      }
+    }
+    const t = { ...p.title }, byName = n => (S.fighters.find(f => f.name === n) || {}).id || '';
+    if (p.f1name) t.f1 = byName(p.f1name);
+    if (p.f2name) t.f2 = byName(p.f2name);
+    S.settings.title = normTitle(t);
+    if ('menuMusic' in p) { S.settings.menuMusic = refOr(p.menuMusic); S.settings.menuMusicTrim = normTrim(p.menuMusicTrim); }
+    S.portadaStamp = p.stamp;
+    save(true);
+    return true;
+  } catch (e) { return false; }
+}
+
 /* ---- editor de la pantalla de inicio ---- */
 const edT = { tm: 0, phone: false };
 function renderTitleEditor() {
@@ -4388,7 +4444,8 @@ function renderTitleEditor() {
     <h3>Pantalla de inicio <span class="arow"><button class="btn sm" data-act="tsPhone">${edT.phone ? '🖥️ Ver horizontal' : '📱 Ver como móvil'}</button><button class="btn primary sm" data-act="tsFull">▶ Ver a pantalla completa</button></span></h3>
     <div class="ts-frame${edT.phone ? ' phone' : ''}" id="tsPrev"></div>
     <label class="check" style="margin-top:12px"><input type="checkbox" data-ti="enabled" ${t.enabled ? 'checked' : ''}> Mostrar al abrir la app</label>
-    <div class="arow" style="margin:10px 0 6px"><button class="btn sm" data-io="export">⬆ Exportar todo</button><button class="btn sm" data-io="import">⬇ Importar todo</button></div>
+    <div class="arow" style="margin:10px 0 6px"><button class="btn sm primary" data-act="tsPublish">🌐 Publicar portada en la web</button><button class="btn sm" data-io="export">⬆ Exportar todo</button><button class="btn sm" data-io="import">⬇ Importar todo</button></div>
+    <p class="note">«Publicar portada en la web» crea el archivo <b>portada.json</b>. Cuando lo subas a la carpeta pokemdk de GitHub, la web mostrará esta portada (y la música de la selección) a todo el que la abra, sin importar nada.</p>
     <p class="note">«Exportar todo» guarda en un archivo personajes, escenarios, esta pantalla de inicio y las músicas, para pasarlo a otro dispositivo o a la web.<br>Para volver a verla en cualquier momento, toca el logo de arriba a la izquierda. Se continúa pulsando Enter (o cualquier tecla) o tocando la pantalla.</p>
   </div>
   <div class="card">
@@ -4479,6 +4536,7 @@ editorCommon($('#tForm'));
 $('#tForm').addEventListener('click', e => {
   const b = e.target.closest('[data-act]'); if (!b) return;
   if (b.dataset.act === 'tsFull') showTitle();
+  else if (b.dataset.act === 'tsPublish') publishPortada();
   else if (b.dataset.act === 'tsPhone') { edT.phone = !edT.phone; renderTitleEditor(); }
 });
 
@@ -4494,7 +4552,7 @@ $('#tForm').addEventListener('click', e => {
       (keys || []).forEach((k, i) => { MEDIA[k] = vals[i]; });
       const st = await idb('kv', 'readonly', s => s.get('state'));
       if (st && Array.isArray(st.fighters)) {
-        S = { v: 7, fighters: st.fighters.map(normFighter), arenas: (st.arenas || []).map(normArena), settings: normSettings(st.settings) };
+        S = { v: 7, fighters: st.fighters.map(normFighter), arenas: (st.arenas || []).map(normArena), settings: normSettings(st.settings), portadaStamp: st.portadaStamp || 0 };
         if (!S.arenas.length) S.arenas = defaultArenas();
         if ((st.v || 2) < 3 && !S.fighters.some(f => f.name === 'Gotarín')) {
           const extra = defaultFighters();
@@ -4533,6 +4591,7 @@ $('#tForm').addEventListener('click', e => {
       }
     } catch (e) {}
   }
+  await Promise.race([loadPortada(), wait(3000)]);
   paintSound();
   renderSetup();
   if (S.settings.title.enabled) showTitle(); else playMenuMusic();
