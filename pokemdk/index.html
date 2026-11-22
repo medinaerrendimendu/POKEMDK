@@ -471,8 +471,8 @@ body.ts-lock{overflow:hidden}
         <button class="btn primary" id="newF">+ Nuevo personaje</button>
         <div id="fList" style="display:flex;flex-direction:column;gap:8px"></div>
         <div class="io">
-          <button class="btn" data-io="export">⬆ Exportar</button>
-          <button class="btn" data-io="import">⬇ Importar</button>
+          <button class="btn" data-io="export">⬆ Exportar todo</button>
+          <button class="btn" data-io="import">⬇ Importar todo</button>
           <button class="btn danger" data-io="reset">Restaurar demo</button>
         </div>
       </aside>
@@ -487,8 +487,8 @@ body.ts-lock{overflow:hidden}
         <button class="btn primary" id="newA">+ Nuevo escenario</button>
         <div id="aList" style="display:flex;flex-direction:column;gap:8px"></div>
         <div class="io">
-          <button class="btn" data-io="export">⬆ Exportar</button>
-          <button class="btn" data-io="import">⬇ Importar</button>
+          <button class="btn" data-io="export">⬆ Exportar todo</button>
+          <button class="btn" data-io="import">⬇ Importar todo</button>
         </div>
       </aside>
       <div id="aForm"></div>
@@ -4207,7 +4207,7 @@ async function doExport() {
   const json = JSON.stringify(await exportData());
   const dl = await Promise.race([DL, wait(1500).then(() => null)]);
   if (dl) {
-    try { await dl.save({ filename: 'arena-combates.json', data: new Blob([json], { type: 'application/json' }) }); toast('Archivo guardado ✔'); return; }
+    try { await dl.save({ filename: 'pokemdk.json', data: new Blob([json], { type: 'application/json' }) }); toast('Archivo guardado ✔'); return; }
     catch (e) { if (e && e.code === 'declined') return; }
   }
   try {
@@ -4218,7 +4218,7 @@ async function doExport() {
     toast('Archivo descargado ✔'); return;
   } catch (e) {}
   openModal(`<h3>Exportar</h3>
-    <p class="tip" style="margin:0 0 10px">Copia este texto y guárdalo en un archivo <b>arena-combates.json</b>. Incluye imágenes, sonidos y vídeos (${(json.length / 1048576).toFixed(1)} MB).</p>
+    <p class="tip" style="margin:0 0 10px">Copia este texto y guárdalo en un archivo <b>pokemdk.json</b>. Incluye todo: personajes, escenarios, pantalla de inicio, músicas, imágenes, sonidos y vídeos (${(json.length / 1048576).toFixed(1)} MB).</p>
     <textarea id="expTxt" readonly></textarea>
     <div class="row"><button class="btn" data-close>Cerrar</button><button class="btn primary" id="copyBtn">Copiar</button></div>`);
   $('#expTxt').value = json.length > 3e6 ? json.slice(0, 3e6) + '\n… (demasiado grande para mostrarlo entero: usa Copiar)' : json;
@@ -4229,10 +4229,10 @@ async function doExport() {
 }
 function doImport() {
   openModal(`<h3>Importar</h3>
-    <p class="tip" style="margin:0 0 10px">Elige el archivo .json exportado (o pega su contenido).</p>
+    <p class="tip" style="margin:0 0 10px">Elige el archivo .json exportado (o pega su contenido). <b>Reemplazar todo</b> trae personajes, escenarios, pantalla de inicio, músicas y ajustes de sonido. <b>Añadir</b> solo suma sus personajes y escenarios a los tuyos.</p>
     <input type="file" accept=".json,application/json,text/plain" id="impFile" style="margin-bottom:10px">
     <textarea id="impTxt" placeholder='{"app":"arena-combates", ...}'></textarea>
-    <div class="row"><button class="btn" data-close>Cancelar</button><button class="btn" id="impAdd">Añadir a lo que tengo</button><button class="btn primary" id="impRep">Reemplazar todo</button></div>`);
+    <div class="row"><button class="btn" data-close>Cancelar</button><button class="btn" id="impAdd">Añadir solo personajes y escenarios</button><button class="btn primary" id="impRep">Reemplazar todo</button></div>`);
   let fileText = null;
   $('#impFile').onchange = e => { const fl = e.target.files[0]; if (fl) fl.text().then(t => { fileText = t; $('#impTxt').value = t.length > 2e6 ? '(archivo cargado: ' + (t.length / 1048576).toFixed(1) + ' MB)' : t; }); };
   const go = async replace => {
@@ -4240,7 +4240,7 @@ function doImport() {
     try { d = JSON.parse(fileText || $('#impTxt').value); } catch (e) { return toast('Ese texto no es una exportación válida'); }
     const fighters = (Array.isArray(d) ? d : d.fighters || []).map(x => normFighter({ ...x, id: null }));
     const arenas = (d.arenas || []).map(x => normArena({ ...x, id: null }));
-    if (!fighters.length && !arenas.length) return toast('No hay personajes ni escenarios en ese archivo');
+    if (!fighters.length && !arenas.length && !(replace && d.settings)) return toast('No hay nada que importar en ese archivo');
     for (const [id, val] of Object.entries(d.media || {})) {
       if (/^[a-z0-9]+$/.test(id) && typeof val === 'string' && val.startsWith('data:')) {
         MEDIA[id] = val;
@@ -4248,13 +4248,21 @@ function doImport() {
       }
     }
     if (replace) {
-      S.fighters = fighters;
-      S.arenas = arenas.length ? arenas : defaultArenas();
-      if (d.settings) S.settings = normSettings({ ...d.settings, muted: S.settings.muted });
+      if (fighters.length) S.fighters = fighters;
+      S.arenas = arenas.length ? arenas : S.arenas;
+      if (d.settings) {
+        const src0 = Array.isArray(d) ? d : d.fighters || [], idMap = {};
+        src0.forEach((x, i) => { if (x && x.id && fighters[i]) idMap[x.id] = fighters[i].id; });
+        const ti = { ...(d.settings.title || {}) };
+        ['f1', 'f2'].forEach(k => { if (idMap[ti[k]]) ti[k] = idMap[ti[k]]; });
+        S.settings = normSettings({ ...d.settings, title: ti, muted: S.settings.muted });
+      }
     } else { S.fighters = S.fighters.concat(fighters); S.arenas = S.arenas.concat(arenas); }
     ed.sel = fighters[0]?.id || ed.sel; edA.sel = arenas[0]?.id || edA.sel;
-    save(true); closeModal(); renderEditor(); renderArenaEditor();
-    toast(`Importado: ${fighters.length} personaje(s) y ${arenas.length} escenario(s) ✔`);
+    save(true); closeModal(); renderEditor(); renderArenaEditor(); renderSetup();
+    if (!$('#view-title').hidden) renderTitleEditor();
+    paintSound(); Music.stop(); playMenuMusic();
+    toast(replace && d.settings ? `Importado todo: ${fighters.length} personaje(s), ${arenas.length} escenario(s), pantalla de inicio y músicas ✔` : `Importado: ${fighters.length} personaje(s) y ${arenas.length} escenario(s) ✔`);
   };
   $('#impAdd').onclick = () => go(false);
   $('#impRep').onclick = () => go(true);
@@ -4380,7 +4388,8 @@ function renderTitleEditor() {
     <h3>Pantalla de inicio <span class="arow"><button class="btn sm" data-act="tsPhone">${edT.phone ? '🖥️ Ver horizontal' : '📱 Ver como móvil'}</button><button class="btn primary sm" data-act="tsFull">▶ Ver a pantalla completa</button></span></h3>
     <div class="ts-frame${edT.phone ? ' phone' : ''}" id="tsPrev"></div>
     <label class="check" style="margin-top:12px"><input type="checkbox" data-ti="enabled" ${t.enabled ? 'checked' : ''}> Mostrar al abrir la app</label>
-    <p class="note">Para volver a verla en cualquier momento, toca el logo de arriba a la izquierda. Se continúa pulsando Enter (o cualquier tecla) o tocando la pantalla.</p>
+    <div class="arow" style="margin:10px 0 6px"><button class="btn sm" data-io="export">⬆ Exportar todo</button><button class="btn sm" data-io="import">⬇ Importar todo</button></div>
+    <p class="note">«Exportar todo» guarda en un archivo personajes, escenarios, esta pantalla de inicio y las músicas, para pasarlo a otro dispositivo o a la web.<br>Para volver a verla en cualquier momento, toca el logo de arriba a la izquierda. Se continúa pulsando Enter (o cualquier tecla) o tocando la pantalla.</p>
   </div>
   <div class="card">
     <h3>Textos</h3>
