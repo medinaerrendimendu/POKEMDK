@@ -231,6 +231,14 @@ img.shield{object-fit:contain;opacity:.92;filter:drop-shadow(0 0 10px var(--c))}
 .stfx-confusion .orbit{position:absolute;left:50%;top:-2%;width:50%;height:16%;transform:translateX(-50%)}
 .stfx-confusion b{position:absolute;color:var(--c);font-size:clamp(10px,2cqw,22px);text-shadow:0 0 3px #fff,0 0 3px #fff;transform:translate(-50%,-50%);animation:stOrbit 1.5s linear infinite}
 .stfx-confusion b:nth-child(2){animation-delay:-.5s}.stfx-confusion b:nth-child(3){animation-delay:-1s}
+.stfx-love .orbit{position:absolute;left:50%;top:-4%;width:56%;height:18%;transform:translateX(-50%)}
+.stfx-love b{position:absolute;font-size:clamp(10px,2cqw,22px);transform:translate(-50%,-50%);animation:stOrbit 2.2s linear infinite}
+.stfx-love b:nth-child(2){animation-delay:-.73s}.stfx-love b:nth-child(3){animation-delay:-1.46s}
+.stfx-burn b{position:absolute;bottom:8%;font-size:clamp(10px,2cqw,22px);opacity:.9;animation:stFlick 1.1s ease-in-out infinite}
+.stfx-burn b:nth-child(1){left:18%}.stfx-burn b:nth-child(2){left:46%;animation-delay:.35s}.stfx-burn b:nth-child(3){left:72%;animation-delay:.7s}
+@keyframes stFlick{0%,100%{transform:translateY(0) scale(.9);opacity:.6}50%{transform:translateY(-30%) scale(1.15);opacity:1}}
+.st-love .idle{animation:stLove 1.6s ease-in-out infinite!important}
+@keyframes stLove{50%{transform:scale(1.04) rotate(-2deg)}}
 @keyframes stOrbit{0%{left:0%;top:50%}25%{left:50%;top:100%}50%{left:100%;top:50%}75%{left:50%;top:0%}100%{left:0%;top:50%}}
 .glyph{position:absolute;z-index:9;pointer-events:none;font-weight:800;color:var(--c);text-shadow:0 0 4px #fff,0 2px 0 rgba(0,0,0,.3);font-size:clamp(14px,2.6cqw,28px);transform:translate(-50%,-50%);opacity:0;animation:glyphUp 1.1s ease-out forwards}
 @keyframes glyphUp{0%{opacity:0;transform:translate(-50%,-50%) scale(.5)}25%{opacity:1;transform:translate(-50%,-50%) scale(1.2)}100%{opacity:0;transform:translate(calc(-50% + var(--dx,0px)),calc(-50% - 60px)) scale(1)}}
@@ -258,6 +266,10 @@ img.shield{object-fit:contain;opacity:.92;filter:drop-shadow(0 0 10px var(--c))}
 .move.mega{grid-column:1/-1;--c:#c77dff;background:linear-gradient(90deg,#f3e8ff,#fffdf5)}
 .move.mega.on{background:linear-gradient(90deg,#7b2cbf,#c77dff);color:#fff}
 .move.mega.on small{color:#f3e8ff}
+.move.bag{--c:#52b788}.move.swap{--c:#4cc9f0}
+.move.item img{height:1.6em;width:1.6em;object-fit:contain;vertical-align:middle;margin-right:6px}
+.it-card{background:#1f2240;border:2px solid var(--line);border-left:8px solid var(--c);border-radius:12px;padding:12px;margin-bottom:10px}
+.it-card .it-head{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px}
 .move.back{grid-column:1/-1;--c:#adb5bd;padding:7px 11px}
 .move.target{display:flex;flex-direction:column}
 .move.target img{height:44px;object-fit:contain;align-self:flex-start;margin-bottom:4px}
@@ -446,7 +458,7 @@ body.ts-lock{overflow:hidden}
   <section id="view-battle">
     <div id="setup" class="panel">
       <div id="selLogo" hidden></div>
-      <h2 class="setup-h"><span id="selTitle">Prepara el combate</span><span class="arow"><button class="btn sm" id="selSkinBtn" type="button" title="Cambiar colores, fondo y logo de esta pantalla">🎨 Personalizar</button><button class="btn sm" id="menuMusicBtn" type="button" title="Elegir la música de esta pantalla">🎵 Música</button></span></h2>
+      <h2 class="setup-h"><span id="selTitle">Prepara el combate</span><span class="arow"><button class="btn sm" id="itemsBtn" type="button" title="Crear y editar los objetos de la mochila">🎒 Objetos</button><button class="btn sm" id="selSkinBtn" type="button" title="Cambiar colores, fondo y logo de esta pantalla">🎨 Personalizar</button><button class="btn sm" id="menuMusicBtn" type="button" title="Elegir la música de esta pantalla">🎵 Música</button></span></h2>
       <div class="mode" id="modeRow">
         <button data-mode="cpu" class="on">🤖 Contra la CPU</button>
         <button data-mode="pvp">🎮 2 jugadores (mismo dispositivo)</button>
@@ -1231,13 +1243,15 @@ async function audioInfo(ref) {
    Modelo de datos
    ========================================================= */
 const KIND_LABEL = { projectile: '🎯 Lanzamiento', melee: '💥 Embestida', heal: '💚 Curación', stat: '📈 Estadística', protect: '🛡️ Protección', vanish: '👻 Desaparecer', status: '☠️ Estado', form: '🔄 Cambio de forma' };
-const ST_KEYS = ['poison', 'paralysis', 'sleep', 'confusion'];
-const ST_ICON = { poison: '☠️', paralysis: '⚡', sleep: '💤', confusion: '🥴' };
+const ST_KEYS = ['poison', 'paralysis', 'sleep', 'confusion', 'burn', 'love'];
+const ST_ICON = { poison: '☠️', paralysis: '⚡', sleep: '💤', confusion: '🥴', burn: '🔥', love: '💘' };
 const ST_DEF = {
   poison: { name: 'Veneno', adj: 'envenenado', short: 'VEN', color: '#9d4edd' },
   paralysis: { name: 'Parálisis', adj: 'paralizado', short: 'PAR', color: '#f4c20d' },
   sleep: { name: 'Sueño', adj: 'dormido', short: 'DOR', color: '#8d99ae' },
-  confusion: { name: 'Borrachera', adj: 'borracho', short: 'BOR', color: '#ff70a6' }
+  confusion: { name: 'Borrachera', adj: 'borracho', short: 'BOR', color: '#ff70a6' },
+  burn: { name: 'Quemadura', adj: 'quemado', short: 'QUE', color: '#ff5400' },
+  love: { name: 'Enamoramiento', adj: 'enamorado', short: 'ENA', color: '#ff4d9d' }
 };
 let RNG = Math.random;                 /* en online se sustituye por un generador con semilla compartida */
 const R = () => RNG();
@@ -1381,11 +1395,32 @@ function normStatusCfg(s = {}) {
   o.sleepMin = num(s.sleepMin, 1, 1, 6); o.sleepMax = Math.max(o.sleepMin, num(s.sleepMax, 3, 1, 6));
   o.confMin = num(s.confMin, 2, 1, 8); o.confMax = Math.max(o.confMin, num(s.confMax, 4, 1, 8));
   o.confHit = num(s.confHit, 33, 0, 100);
+  o.burnPct = num(s.burnPct, 6, 1, 50);
+  o.burnAtk = num(s.burnAtk, 50, 0, 90);
+  o.loveChance = num(s.loveChance, 50, 0, 100);
+  o.loveMin = num(s.loveMin, 2, 1, 8); o.loveMax = Math.max(o.loveMin, num(s.loveMax, 4, 1, 8));
   return o;
 }
 const APP_TITLE = 'POKEMDK';
 function normList(arr) {
   return (Array.isArray(arr) ? arr : []).filter(x => x && refOr(x.ref)).map(x => ({ ref: refOr(x.ref), refTrim: normTrim(x.refTrim) })).slice(0, 40);
+}
+function normItem(o = {}) {
+  if (!o || typeof o !== 'object') o = {};
+  return { id: typeof o.id === 'string' && o.id ? o.id : uid(), name: str(o.name, 'Objeto', 20), img: refOr(o.img), qty: num(o.qty, 1, 1, 9),
+    target: o.target === 'foe' ? 'foe' : 'self', heal: num(o.heal, 0, 0, 100), cure: !!o.cure,
+    stat: oneOf(o.stat, ['none', 'atk', 'def', 'spd'], 'none'), amount: num(o.amount, 1, -3, 3) || 1,
+    status: oneOf(o.status, ['none', ...ST_KEYS], 'none'), dmg: num(o.dmg, 0, 0, 100), color: hex(o.color, '#4cc9f0'),
+    sound: refOr(o.sound), soundTrim: normTrim(o.soundTrim) };
+}
+const defaultItems = () => [
+  normItem({ name: 'Poción', img: 'art:potion', heal: 40, qty: 2, color: '#52b788' }),
+  normItem({ name: 'Antídoto', cure: true, qty: 1, color: '#90e0ef' }),
+  normItem({ name: 'Bebida energética', stat: 'spd', amount: 2, qty: 1, color: '#ffd60a' })
+];
+function normItems(x) {
+  if (!x || typeof x !== 'object') return { on: true, list: defaultItems(), icon: null, label: 'Mochila' };
+  return { on: x.on !== false, list: (Array.isArray(x.list) ? x.list : []).slice(0, 12).map(normItem), icon: refOr(x.icon), label: str(x.label, 'Mochila', 20) };
 }
 function normSel(s = {}) {
   if (!s || typeof s !== 'object') s = {};
@@ -1429,6 +1464,7 @@ function normSettings(s = {}) {
     menuMusics: Array.isArray(s.menuMusics) ? normList(s.menuMusics) : normList([{ ref: s.menuMusic, refTrim: s.menuMusicTrim }]),
     title: normTitle(s.title),
     sel: normSel(s.sel),
+    items: normItems(s.items),
     balance: { on: !s.balance || s.balance.on !== false, budget: num(s.balance && s.balance.budget, 11, 0, 60) },
     muted: !!s.muted
   };
@@ -1508,7 +1544,7 @@ const SFX = {
   throw: ['triangle', 300, 800, .25], appear: ['square', 300, 1300, .3], thud: ['sine', 140, 40, .25],
   pop: ['square', 900, 200, .12], charge: ['sawtooth', 110, 880, 1.2],
   block: ['square', 1300, 500, .14], shield: ['triangle', 500, 1400, .35], vanish: ['sine', 900, 160, .5],
-  poison: ['sine', 320, 120, .5], zap: ['sawtooth', 95, 70, .4], snore: ['sine', 190, 110, .8], dizzy: ['triangle', 620, 280, .5]
+  poison: ['sine', 320, 120, .5], zap: ['sawtooth', 95, 70, .4], snore: ['sine', 190, 110, .8], dizzy: ['triangle', 620, 280, .5], sizzle: ['sawtooth', 260, 90, .55], heart: ['sine', 660, 1040, .45]
 };
 function sfx(type) {
   if (S.settings.muted || !SFX[type]) return;
@@ -1654,6 +1690,74 @@ function stopWinMusic() {
 }
 function stopBattleSound() { Music.stop(); const v = $('#arena video.bgvid'); if (v) v.muted = true; }
 function stopAllMusic() { stopBattleSound(); stopWinMusic(); }
+/* editor de objetos (mochila): todos los jugadores llevan los mismos */
+function renderItemsEditor() {
+  const I = S.settings.items, stc = S.settings.status;
+  $('#itBox').innerHTML = `
+    <label class="check" style="margin-bottom:10px"><input type="checkbox" data-itg="on" ${I.on ? 'checked' : ''}> Usar objetos en los combates</label>
+    <div class="imgrow" style="margin-bottom:12px">
+      ${imgSlot('itset:icon', I.icon, 'Icono de la mochila', { optional: true })}
+      <div class="fields"><label class="full">Nombre del botón<input type="text" maxlength="20" value="${esc(I.label)}" data-itg="label"></label>
+        <p class="note full">Sube la imagen que quieras para el botón de la mochila en combate (PNG, mejor con fondo transparente; si no, usa ✂️ Quitar fondo).</p></div>
+    </div>
+    <p class="note" style="margin:0 0 12px">Cada jugador empieza el combate con la misma mochila. Usar un objeto gasta el turno de ese personaje, pero va antes que los ataques. En online se usan los objetos del anfitrión.</p>
+    ${I.list.map((it, i) => `
+    <div class="it-card" style="--c:${it.color}">
+      <div class="it-head"><b>${it.img ? '' : '🎒 '}${esc(it.name)}</b><button class="btn sm danger" data-itdel="${i}" type="button">✕ Quitar</button></div>
+      <div class="imgrow">
+        ${imgSlot(`it:${i}:img`, it.img, 'Imagen (opcional)', { optional: true })}
+        <div class="fields">
+          <label>Nombre<input type="text" maxlength="20" value="${esc(it.name)}" data-itf="name" data-i="${i}"></label>
+          <label>Unidades por combate<input type="number" min="1" max="9" value="${it.qty}" data-itf="qty" data-i="${i}"></label>
+          <label>Se usa sobre<select data-itf="target" data-i="${i}">${opt('self', it.target, 'Tu personaje')}${opt('foe', it.target, 'El rival')}</select></label>
+          <label>Color<input type="color" value="${it.color}" data-itf="color" data-i="${i}"></label>
+          ${statField(`data-i="${i}" data-itf`, 'heal', 'Cura', 0, 100, it.heal, '%')}
+          ${statField(`data-i="${i}" data-itf`, 'dmg', 'Quita vida', 0, 100, it.dmg, '%')}
+          <label>Estadística<select data-itf="stat" data-i="${i}">${opt('none', it.stat, 'Ninguna')}${opt('atk', it.stat, 'Ataque')}${opt('def', it.stat, 'Defensa')}${opt('spd', it.stat, 'Velocidad')}</select></label>
+          <label>Cuánto<select data-itf="amount" data-i="${i}">${[-3, -2, -1, 1, 2, 3].map(n => opt(n, it.amount, (n > 0 ? '+' : '') + n)).join('')}</select></label>
+          <label>Provoca estado<select data-itf="status" data-i="${i}">${opt('none', it.status, 'Ninguno')}${ST_KEYS.map(k => opt(k, it.status, ST_ICON[k] + ' ' + esc(stc[k].name))).join('')}</select></label>
+          <label class="check"><input type="checkbox" data-itf="cure" data-i="${i}" ${it.cure ? 'checked' : ''}> Cura los estados alterados</label>
+          <div class="full">${audioSlot(`it:${i}:sound`, it.sound, 'Sonido al usarlo', 'Sonido por defecto')}</div>
+        </div>
+      </div>
+      <p class="note" style="margin-top:6px">${esc(itemInfo(it))}</p>
+    </div>`).join('') || '<p class="note">No hay objetos. Crea el primero.</p>'}
+    ${I.list.length < 12 ? '<button class="btn primary" data-itadd type="button">+ Nuevo objeto</button>' : ''}`;
+  hydrateTrims($('#itBox'));
+}
+function openItemsEditor() {
+  openModal(`<h3>🎒 Objetos de la mochila</h3><div id="itBox"></div>
+    <div class="row"><button class="btn" id="itReset" type="button">Restaurar los de ejemplo</button><button class="btn primary" data-close>Listo</button></div>`, 'wide');
+  renderItemsEditor();
+  $('#itReset').onclick = () => { S.settings.items.list = defaultItems(); save(true); renderItemsEditor(); };
+}
+$('#itemsBtn').onclick = openItemsEditor;
+function onItemField(e) {
+  const el = e.target; if (!el.closest || !el.closest('#itBox') || el.type === 'file' || el.dataset.trim) return;
+  const I = S.settings.items;
+  if (el.dataset.itg) { if (el.dataset.itg === 'label') I.label = String(el.value).slice(0, 20) || 'Mochila'; else I.on = el.checked; save(); return; }
+  if (!el.dataset.itf) return;
+  const it = I.list[+el.dataset.i]; if (!it) return;
+  const k = el.dataset.itf;
+  if (k === 'name') it.name = String(el.value).slice(0, 20) || 'Objeto';
+  else if (k === 'color' || k === 'target' || k === 'stat' || k === 'status') it[k] = el.value;
+  else if (k === 'cure') it.cure = el.checked;
+  else if (k === 'amount') it.amount = num(el.value, 1, -3, 3) || 1;
+  else if (k === 'qty') it.qty = num(el.value, it.qty, 1, 9);
+  else { it[k] = num(el.value, it[k], 0, 100); const o = el.closest('label')?.querySelector('output'); if (o) o.textContent = it[k] + '%'; }
+  const card = el.closest('.it-card');
+  if (card) { card.style.setProperty('--c', it.color); card.querySelector('.it-head b').textContent = (it.img ? '' : '🎒 ') + it.name; card.querySelector(':scope > .note').textContent = itemInfo(it); }
+  save();
+}
+$('#modalCard').addEventListener('input', e => { if (e.target.tagName !== 'SELECT' && e.target.type !== 'checkbox') onItemField(e); });
+$('#modalCard').addEventListener('change', onItemField);
+$('#modalCard').addEventListener('click', e => {
+  if (!$('#itBox')) return;
+  const add = e.target.closest('[data-itadd]'), del = e.target.closest('[data-itdel]');
+  if (add) { S.settings.items.list.push(normItem({ name: 'Nuevo objeto', heal: 25 })); save(true); renderItemsEditor(); }
+  if (del) { S.settings.items.list.splice(+del.dataset.itdel, 1); save(true); renderItemsEditor(); }
+});
+
 /* aspecto de la pantalla de selección */
 function applySelSkin() {
   const c = S.settings.sel, bgEl = $('#selBg'), setup = $('#setup');
@@ -2118,6 +2222,9 @@ async function chargeAnim(c, U, m) {
   await wait(1250);
 }
 
+/* estados que se suman a los demás: borrachera y enamoramiento */
+const VOLATILE = { confusion: ['confused', 'confLeft'], love: ['inLove', 'loveLeft'] };
+const stList = U => { const l = []; if (U.status) l.push(U.status); if (U.confused) l.push('confusion'); if (U.inLove) l.push('love'); return l; };
 /* ---------- estados alterados: visuales ---------- */
 function glyph(c, x, y, text, color, delay = 0, dx = 0) {
   const g = document.createElement('div');
@@ -2127,8 +2234,8 @@ function glyph(c, x, y, text, color, delay = 0, dx = 0) {
 }
 async function statusAnim(c, U, type, phase) {
   const cfg = S.settings.status[type], P = center(U.img, c), col = cfg.color;
-  playSnd(cfg, 'sound', { poison: 'poison', paralysis: 'zap', sleep: 'snore', confusion: 'dizzy' }[type]);
-  if (cfg.img) showFx(c, src(cfg.img), P.x, P.y - (type === 'sleep' || type === 'confusion' ? P.h * .45 : 0), clamp(P.w * .55, 36, 120), 'pulse');
+  playSnd(cfg, 'sound', { poison: 'poison', paralysis: 'zap', sleep: 'snore', confusion: 'dizzy', burn: 'sizzle', love: 'heart' }[type]);
+  if (cfg.img) showFx(c, src(cfg.img), P.x, P.y - (type === 'sleep' || type === 'confusion' || type === 'love' ? P.h * .45 : 0), clamp(P.w * .55, 36, 120), 'pulse');
   if (type === 'poison') {
     sparkles(c, P, col, 16);
     U.img.animate([{ filter: 'none' }, { filter: `sepia(1) hue-rotate(230deg) saturate(3) drop-shadow(0 0 12px ${col})` }, { filter: 'none' }], { duration: 900 });
@@ -2137,6 +2244,13 @@ async function statusAnim(c, U, type, phase) {
     burst(c, P.x, P.y, col, 10);
     U.wrap.animate([{ transform: 'translateX(0)' }, { transform: 'translateX(-4px)' }, { transform: 'translateX(4px)' }, { transform: 'translateX(-4px)' }, { transform: 'translateX(4px)' }, { transform: 'translateX(0)' }], { duration: 300, iterations: 2 });
     U.img.animate([{ filter: 'none' }, { filter: `brightness(1.8) drop-shadow(0 0 12px ${col})` }, { filter: 'none' }, { filter: `brightness(1.8) drop-shadow(0 0 12px ${col})` }, { filter: 'none' }], { duration: 600 });
+  } else if (type === 'burn') {
+    for (let i = 0; i < 7; i++) glyph(c, P.x + (Math.random() - .5) * P.w * .8, P.y + P.h * .25 - Math.random() * P.h * .3, '🔥', col, i * .07, (Math.random() - .5) * 20);
+    U.img.animate([{ filter: 'none' }, { filter: `sepia(1) saturate(4) hue-rotate(-20deg) brightness(1.2) drop-shadow(0 0 14px ${col})` }, { filter: 'none' }], { duration: 900 });
+    U.wrap.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(-3%)' }, { transform: 'translateY(0)' }], { duration: 300, iterations: 2 });
+  } else if (type === 'love') {
+    for (let i = 0; i < 7; i++) glyph(c, P.x + Math.cos(i * .9) * P.w * .4, P.y - P.h * .2 + Math.sin(i * .9) * 14, i % 2 ? '💗' : '❤', col, i * .09, (Math.random() - .5) * 30);
+    U.idle && U.idle.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.08)' }, { transform: 'scale(1)' }, { transform: 'scale(1.08)' }, { transform: 'scale(1)' }], { duration: 900 });
   } else if (type === 'sleep') {
     ['z', 'z', 'Z'].forEach((t, i) => glyph(c, P.x + P.w * .2, P.y - P.h * .3, t, col, i * .3, 30));
     U.idle && U.idle.animate([{ transform: 'rotate(0)' }, { transform: 'rotate(-5deg)' }, { transform: 'rotate(0)' }], { duration: 900 });
@@ -2150,9 +2264,7 @@ async function statusAnim(c, U, type, phase) {
 function updateStatusVisual(U) {
   U.wrap.querySelectorAll('.stfx').forEach(n => n.remove());
   ST_KEYS.forEach(k => U.wrap.classList.remove('st-' + k));
-  const list = [];
-  if (U.status) list.push(U.status);
-  if (U.confused) list.push('confusion');
+  const list = stList(U);
   U.wrap.classList.toggle('has-st', list.length > 0);
   if (!list.length) return;
   U.wrap.style.setProperty('--stc', S.settings.status[list[0]].color);
@@ -2162,7 +2274,8 @@ function updateStatusVisual(U) {
     d.className = 'stfx stfx-' + k;
     d.style.setProperty('--c', cfg.color);
     d.innerHTML = cfg.img ? `<img src="${esc(src(cfg.img))}" alt="">`
-      : { poison: '<i></i><i></i><i></i>', paralysis: '<b>⚡</b><b>⚡</b>', sleep: '<span>z</span><span>z</span><span>Z</span>', confusion: '<div class="orbit"><b>★</b><b>★</b><b>★</b></div>' }[k];
+      : { poison: '<i></i><i></i><i></i>', paralysis: '<b>⚡</b><b>⚡</b>', sleep: '<span>z</span><span>z</span><span>Z</span>', confusion: '<div class="orbit"><b>★</b><b>★</b><b>★</b></div>',
+        burn: '<b>🔥</b><b>🔥</b><b>🔥</b>', love: '<div class="orbit"><b>💗</b><b>💗</b><b>💗</b></div>' }[k];
     U.wrap.appendChild(d);
   });
 }
@@ -2488,7 +2601,7 @@ $('#startBtn').onclick = () => { sfx('select'); startBattle(); };
    ========================================================= */
 const STRUGGLE = normAtk({ name: 'Forcejeo', kind: 'melee', power: 30, acc: 100, color: '#adb5bd' });
 const mult = s => s >= 0 ? (2 + s) / 2 : 2 / (2 - s);
-const eff = (C, k) => C.f[k] * mult(C.st[k]) * (k === 'spd' && C.status === 'paralysis' ? .5 : 1);
+const eff = (C, k) => C.f[k] * mult(C.st[k]) * (k === 'spd' && C.status === 'paralysis' ? .5 : 1) * (k === 'atk' && C.status === 'burn' ? 1 - S.settings.status.burnAtk / 100 : 1);
 const alive = side => B.units.filter(U => U.side === side && !U.fainted);
 const aliveFoes = C => alive(1 - C.side);
 const hitsFoe = m => m.kind === 'projectile' || m.kind === 'melee' || m.kind === 'vanish' || (m.kind === 'stat' && m.fx.target === 'foe') || (m.kind === 'status' && m.status.target === 'foe') || (m.kind === 'form' && m.form.mode === 'copy');
@@ -2514,7 +2627,7 @@ function makeUnit(c, f, side, slot) {
   wrap.style.opacity = '0'; hud.style.opacity = '0';
   const U = { f, side, slot, vside: vs, hp: f.hp, max: f.hp, wrap, idle: wrap.firstChild, img, hud,
     charging: null, invuln: false, protecting: false, protectChain: 0, usedProtect: false, shieldEl: null,
-    status: null, sleepTurns: 0, confused: false, confLeft: 0, form: null, fill: hud.querySelector('.fill'), num: hud.querySelector('.hp-num'),
+    status: null, sleepTurns: 0, confused: false, confLeft: 0, inLove: false, loveLeft: 0, form: null, fill: hud.querySelector('.fill'), num: hud.querySelector('.hp-num'),
     stagesEl: hud.querySelector('.stages'), nameEl: hud.querySelector('.n'), st: { atk: 0, def: 0, spd: 0 }, fainted: false, transformed: false, label: f.name };
   U.num.textContent = `${U.hp}/${U.max}`;
   return U;
@@ -2530,6 +2643,7 @@ function computeLabels() {
 }
 async function startBattle(opts) {
   let teams, ar;
+  const itemsCfg = (opts && opts.items) || S.settings.items;
   if (opts) { teams = opts.teams; ar = opts.arena; }
   else {
     fixSelection();
@@ -2543,7 +2657,10 @@ async function startBattle(opts) {
   $$('.proj, .fximg, .particle, .ring, .sparkle, .float, .arrow, .trans, .aura, .unit, .hud, .shield, .scr', c).forEach(n => n.remove());
   B.relay = teams[0].length === 3;
   B.teamAll = teams.map(t => t.slice());
-  if (B.relay) { B.bench = teams.map(t => t.slice(1).map(clone)); teams = teams.map(t => [t[0]]); } else B.bench = [[], []];
+  if (B.relay) { B.bench = teams.map(t => t.slice(1).map(f => ({ f: clone(f), hp: null }))); teams = teams.map(t => [t[0]]); } else B.bench = [[], []];
+  B.items = itemsCfg.on ? clone(itemsCfg.list) : [];
+  B.bagIcon = itemsCfg.icon || null; B.bagLabel = itemsCfg.label || 'Mochila';
+  B.bag = [0, 1].map(() => B.items.map(it => it.qty));
   B.doubles = teams[0].length === 2;
   c.classList.toggle('doubles', B.doubles);
   B.arena = clone(ar);
@@ -2650,9 +2767,30 @@ function showMenu(C) {
     html += `<button class="move mega ${B.megaToggle ? 'on' : ''}" data-mega>✨ ${B.megaToggle ? 'Se transformará en ' + tn : 'Transformar en ' + tn}
       <small>${B.megaToggle ? 'Activado: ocurrirá al empezar el turno. Ahora elige el ataque.' : 'Toca para activar · una vez por combate'}</small></button>`;
   }
+  const left = bagLeft(C.side), sws = benchFor(C.side);
+  if (B.items.length && left) html += `<button class="move bag item" data-bag>${B.bagIcon ? `<img src="${esc(src(B.bagIcon))}" alt="">` : '🎒 '}${esc(B.bagLabel)}<small>${left} objeto${left === 1 ? '' : 's'}</small></button>`;
+  if (B.relay && sws.length && !B.pending.some(a => a.sw != null && a.C.side === C.side)) html += `<button class="move swap" data-swap>🔄 Cambiar<small>${sws.length} en el banquillo</small></button>`;
   if (B.qi > 0 && B.queue[B.qi - 1].side === C.side) html += `<button class="move back" data-back>↩ Atrás</button>`;
   $('#moves').innerHTML = html;
   setMoves(true);
+}
+/* lo que queda en la mochila descontando lo ya elegido este turno */
+const bagCount = (side, k) => (B.bag[side][k] || 0) - B.pending.filter(a => a.C.side === side && a.item === k).length;
+const bagLeft = side => B.items.reduce((s, _, k) => s + Math.max(0, bagCount(side, k)), 0);
+const benchFor = side => B.relay ? B.bench[side].map((e, j) => ({ e, j })) : [];
+function showBag(C) {
+  $('#msg').textContent = `¿Qué objeto usará ${C.label}?`;
+  $('#moves').innerHTML = B.items.map((it, k) => {
+    const n = bagCount(C.side, k);
+    return n > 0 ? `<button class="move item" data-item="${k}" style="--c:${it.color}">${it.img ? `<img src="${esc(src(it.img))}" alt="">` : '🎒 '}${esc(it.name)} ×${n}<small>${esc(itemInfo(it))}</small></button>` : '';
+  }).join('') + `<button class="move back" data-cancel>↩ Volver</button>`;
+}
+function showSwap(C) {
+  $('#msg').textContent = `¿Quién sale en lugar de ${C.label}?`;
+  $('#moves').innerHTML = benchFor(C.side).map(({ e, j }) => {
+    const hp = e.hp == null ? e.f.hp : e.hp;
+    return `<button class="move target" data-sw="${j}" style="--c:#4cc9f0"><img src="${esc(src(e.f.img))}" alt="">${esc(e.f.name)}<small>PS ${hp}/${e.f.hp}${e.status ? ' · ' + esc(S.settings.status[e.status].short) : ''}</small></button>`;
+  }).join('') + `<button class="move back" data-cancel>↩ Volver</button>`;
 }
 function showTargets(C, m, foes) {
   $('#msg').textContent = `¿A quién apuntará ${C.label} con ${m.name}?`;
@@ -2677,10 +2815,20 @@ $('#moves').onclick = e => {
   if (b.hasAttribute('data-back')) {
     const last = B.pending.pop();
     if (last && last.mega) B.megaPicked[last.C.side] = false;
+    B.pickedItem = null;
     B.qi--; B.megaToggle = false;
     return showMenu(B.queue[B.qi]);
   }
-  if (b.hasAttribute('data-cancel')) return showMenu(C);
+  if (b.hasAttribute('data-cancel')) { B.pickedItem = null; return showMenu(C); }
+  if (b.hasAttribute('data-bag')) return showBag(C);
+  if (b.hasAttribute('data-swap')) return showSwap(C);
+  if (b.dataset.sw !== undefined) { B.pending.push({ C, mi: 0, sw: +b.dataset.sw }); B.megaToggle = false; B.qi++; return nextChooser(); }
+  if (b.dataset.item !== undefined) {
+    const k = +b.dataset.item, it = B.items[k], foes = aliveFoes(C);
+    if (it.target === 'foe' && B.doubles && foes.length > 1) { B.pickedItem = k; return showTargets(C, { name: it.name, color: it.color }, foes); }
+    B.pending.push({ C, mi: 0, item: k, target: null }); B.megaToggle = false; B.qi++; return nextChooser();
+  }
+  if (b.dataset.target !== undefined && B.pickedItem != null) { const k = B.pickedItem; B.pickedItem = null; B.pending.push({ C, mi: 0, item: k, target: B.units[+b.dataset.target] }); B.megaToggle = false; B.qi++; return nextChooser(); }
   if (b.dataset.target !== undefined) return commit(C, B.pickedMove, B.units[+b.dataset.target]);
   const i = +b.dataset.i, m = C.f.attacks[i], foes = aliveFoes(C);
   if (B.doubles && hitsFoe(m) && m.range !== 'all' && foes.length > 1) { B.pickedMove = i; return showTargets(C, m, foes); }
@@ -2689,13 +2837,13 @@ $('#moves').onclick = e => {
 function cpuPick(C, foes) {
   const at = C.f.attacks;
   const score = a => {
-    if (a.kind === 'heal') return C.hp / C.max < .35 ? 120 : C.hp / C.max < .6 ? 25 : (a.cure && (C.status || C.confused) ? 40 : 2);
+    if (a.kind === 'heal') return C.hp / C.max < .35 ? 120 : C.hp / C.max < .6 ? 25 : (a.cure && (C.status || C.confused || C.inLove) ? 40 : 2);
     if (a.kind === 'protect') return C.protectChain ? 1 : C.hp / C.max < .4 ? 30 : 10;
     if (a.kind === 'form') return C.form ? 1 : 16;
     if (a.kind === 'status') {
       const T = a.status.target === 'self' ? C : foes[0];
       if (!T || a.status.target === 'self') return 1;
-      const free = a.status.type === 'confusion' ? !T.confused : !T.status;
+      const free = a.status.type === 'confusion' ? !T.confused : a.status.type === 'love' ? !T.inLove : !T.status;
       return free ? 26 : 1;
     }
     if (a.kind === 'vanish') return (a.power * a.acc / 100 + 10) * .9;
@@ -2715,6 +2863,10 @@ function cpuPick(C, foes) {
 }
 function cpuAction(U) {
   const foes = aliveFoes(U);
+  if (U.hp / U.max < .35 && Math.random() < .6) {
+    const k = B.items.findIndex((it, i) => it.target === 'self' && it.heal >= 20 && bagCount(U.side, i) > 0);
+    if (k >= 0) return { C: U, mi: 0, item: k, target: null };
+  }
   const target = foes.length ? (Math.random() < .6 ? foes.slice().sort((a, b) => a.hp / a.max - b.hp / b.max)[0] : foes[Math.floor(Math.random() * foes.length)]) : null;
   const mega = canTransform(U) && (Math.random() < .55 || U.hp / U.max < .7);
   if (mega) B.megaPicked[U.side] = true;
@@ -2727,7 +2879,7 @@ function resolveTargets(C, m, chosen) {
   const foes = aliveFoes(C);
   if (!foes.length) return [];
   if (B.doubles && m.range === 'all') return foes;
-  if (chosen && !chosen.fainted && chosen.side !== C.side) return [chosen];
+  if (chosen && !chosen.fainted && !chosen.gone && chosen.side !== C.side) return [chosen];
   return [foes[Math.floor(R() * foes.length)]];
 }
 async function doTransform(C) {
@@ -2746,6 +2898,14 @@ async function resolveTurn(actions) {
   B.busy = true; setMoves(false);
   $$('#arena .hud').forEach(h => h.classList.remove('active'));
   const sp = a => eff(a.C, 'spd');
+  for (const a of actions.filter(a => a.sw != null).sort((x, y) => sp(y) - sp(x))) await doSwitch(a.C, a.sw);
+  for (const a of actions.filter(a => a.item != null).sort((x, y) => sp(y) - sp(x))) {
+    await useItem(a.C, a.item, a.target);
+    await checkFaints();
+    const w = winnerSide();
+    if (w !== null) return endBattle(w);
+  }
+  actions = actions.filter(a => a.sw == null && a.item == null);
   for (const a of actions.filter(a => a.mega).sort((x, y) => sp(y) - sp(x))) {
     if (a.C.fainted) continue;
     await withAudioWait(() => doTransform(a.C));
@@ -2754,7 +2914,7 @@ async function resolveTurn(actions) {
   actions.forEach(a => { a.r = R(); a.p = prioOf(a.C.f.attacks[a.mi]); });
   actions.sort((x, y) => (y.p - x.p) || (sp(y) - sp(x)) || (x.r - y.r));
   for (const a of actions) {
-    if (a.C.fainted) continue;
+    if (a.C.fainted || a.C.gone) continue;
     const m = a.C.f.attacks[a.mi];
     const canAct = await withAudioWait(() => preAction(a.C));
     if (canAct) await withAudioWait(() => performAction(a.C, m, resolveTargets(a.C, m, a.target), a));
@@ -2769,13 +2929,14 @@ async function resolveTurn(actions) {
   }
   const cfg = S.settings.status;
   for (const U of B.units) {
-    if (U.fainted || U.status !== 'poison') continue;
-    const dmg = Math.max(1, Math.round(U.max * cfg.poisonPct / 100));
-    await withAudioWait(() => statusAnim($('#arena'), U, 'poison', 'tick'));
+    if (U.fainted || (U.status !== 'poison' && U.status !== 'burn')) continue;
+    const kind = U.status;
+    const dmg = Math.max(1, Math.round(U.max * (kind === 'burn' ? cfg.burnPct : cfg.poisonPct) / 100));
+    await withAudioWait(() => statusAnim($('#arena'), U, kind, 'tick'));
     setHP(U, Math.max(0, U.hp - dmg));
     floatText($('#arena'), U.img, '-' + dmg, 'miss');
     await wait(500);
-    await say(`${U.label} está ${cfg.poison.adj}: pierde ${dmg} PS.`);
+    await say(`${U.label} está ${cfg[kind].adj}: pierde ${dmg} PS.`);
   }
   await checkFaints();
   { const w = winnerSide(); if (w !== null) return endBattle(w); }
@@ -2797,9 +2958,7 @@ function setHP(C, v) {
   requestAnimationFrame(step);
 }
 function renderStages(C) {
-  const cfg = S.settings.status, sts = [];
-  if (C.status) sts.push(C.status);
-  if (C.confused) sts.push('confusion');
+  const cfg = S.settings.status, sts = stList(C);
   C.stagesEl.innerHTML = sts.map(k => `<span class="chip" style="background:${cfg[k].color};color:${lum(cfg[k].color) > .6 ? '#1d1d1d' : '#fff'}">${esc(cfg[k].short)}</span>`).join('') + Object.keys(C.st).filter(k => C.st[k]).map(k =>
     `<span class="chip ${C.st[k] < 0 ? 'down' : ''}">${STAT_SHORT[k]}${C.st[k] > 0 ? '+' : ''}${C.st[k]}</span>`).join('');
 }
@@ -2851,6 +3010,20 @@ async function preAction(A) {
       }
     }
   }
+  if (A.inLove) {
+    if (A.loveLeft <= 0) {
+      A.inLove = false; updateStatusVisual(A); renderStages(A);
+      await say(`¡${A.label} ya no está ${cfg.love.adj}!`);
+    } else {
+      A.loveLeft--;
+      await statusAnim(c, A, 'love', 'tick');
+      await say(`¡${A.label} está ${cfg.love.adj}!`, 350);
+      if (R() * 100 < cfg.loveChance) {
+        await say(`¡El amor no deja atacar a ${A.label}!`);
+        return false;
+      }
+    }
+  }
   return true;
 }
 async function inflict(T, type, explicit) {
@@ -2859,6 +3032,9 @@ async function inflict(T, type, explicit) {
   if (type === 'confusion') {
     if (T.confused) { if (explicit) await say(`¡${T.label} ya está ${k.adj}!`); return; }
     T.confused = true; T.confLeft = rint(cfg.confMin, cfg.confMax);
+  } else if (type === 'love') {
+    if (T.inLove) { if (explicit) await say(`¡${T.label} ya está ${k.adj}!`); return; }
+    T.inLove = true; T.loveLeft = rint(cfg.loveMin, cfg.loveMax);
   } else {
     if (T.status === type) { if (explicit) await say(`¡${T.label} ya está ${k.adj}!`); return; }
     if (T.status) { if (explicit) await say(`¡No ha tenido efecto en ${T.label}!`); return; }
@@ -2873,6 +3049,7 @@ async function cureAll(T) {
   const cfg = S.settings.status, gone = [];
   if (T.status) { gone.push(T.status); T.status = null; T.sleepTurns = 0; }
   if (T.confused) { gone.push('confusion'); T.confused = false; T.confLeft = 0; }
+  if (T.inLove) { gone.push('love'); T.inLove = false; T.loveLeft = 0; }
   if (!gone.length) return;
   updateStatusVisual(T); renderStages(T);
   sparkles($('#arena'), center(T.img, $('#arena')), '#ffffff', 12);
@@ -3131,6 +3308,77 @@ function paintDots() {
     el.title = `Le quedan ${left} de 3`;
   });
 }
+function spawnFromBench(e, side, slot) {
+  const N = makeUnit($('#arena'), e.f, side, slot);
+  if (e.hp != null) {
+    N.hp = e.hp; N.status = e.status || null; N.sleepTurns = e.sleepTurns || 0; N.transformed = !!e.transformed;
+    const pct = N.hp / N.max * 100;
+    N.fill.style.width = pct + '%'; N.fill.className = 'fill' + (pct <= 20 ? ' low' : pct <= 50 ? ' mid' : '');
+    N.num.textContent = `${N.hp}/${N.max}`;
+    updateStatusVisual(N); renderStages(N);
+  }
+  return N;
+}
+/* cambiar de personaje (3 vs 3): el que sale vuelve al banquillo con su vida y su estado */
+async function doSwitch(C, j) {
+  const bench = B.bench[C.side], e = bench[j];
+  if (!e || C.fainted || !B.units.includes(C)) return;
+  const c = $('#arena');
+  await say(`¡${C.label}, vuelve!`, 250);
+  sfx('vanish');
+  if (C.protecting) { C.protecting = false; hideShield(C); }
+  await C.wrap.animate([{ opacity: 1, transform: 'none' }, { opacity: 0, transform: 'scale(.3) translateY(30%)' }], { duration: 450, easing: 'ease-in', fill: 'forwards' }).finished.catch(() => {});
+  if (C.form) await revertForm(C, false, true);
+  bench[j] = { f: C.f, hp: C.hp, status: C.status, sleepTurns: C.sleepTurns, transformed: C.transformed };
+  const idx = B.units.indexOf(C);
+  C.wrap.remove(); C.hud.remove(); if (C.shieldEl) C.shieldEl.remove(); C.gone = true;
+  const N = spawnFromBench(e, C.side, C.slot);
+  B.units[idx] = N;
+  computeLabels(); paintDots();
+  await N.img.decode().catch(() => {});
+  await say(`¡Adelante, ${N.label}!`, 250);
+  await withAudioWait(() => entryAnim(c, N, N.vside));
+  showHud(N);
+}
+/* objetos de la mochila */
+function itemInfo(it) {
+  const p = [];
+  if (it.heal) p.push(`Cura ${it.heal}%`);
+  if (it.cure) p.push('cura estados');
+  if (it.stat !== 'none') p.push(`${STAT_SHORT[it.stat]} ${it.amount > 0 ? '+' : ''}${it.amount}`);
+  if (it.status !== 'none') p.push(`${ST_ICON[it.status]} ${S.settings.status[it.status].name}`);
+  if (it.dmg) p.push(`Daño ${it.dmg}%`);
+  return (it.target === 'foe' ? '🎯 Al rival · ' : '') + (p.join(' · ') || 'Sin efecto');
+}
+async function useItem(C, k, target) {
+  const it = B.items[k], bag = B.bag[C.side];
+  if (!it || !(bag[k] > 0) || C.fainted || !B.units.includes(C)) return;
+  bag[k]--;
+  const c = $('#arena');
+  await say(`¡${C.label} usó ${it.name}!`, 250);
+  const foes = aliveFoes(C);
+  const T = it.target === 'foe' ? (target && B.units.includes(target) && !target.fainted && target.side !== C.side ? target : foes[Math.floor(R() * foes.length)]) : C;
+  if (!T) { await say('¡Pero no ha tenido efecto!'); return; }
+  playSnd(it, 'sound', 'pop');
+  const P = center(T.img, c);
+  if (it.img) showFx(c, src(it.img), P.x, P.y, clamp(P.w * .6, 40, 140), 'pulse');
+  sparkles(c, P, it.color, 14);
+  await wait(500);
+  if (it.dmg) {
+    const d = Math.min(T.hp, Math.max(1, Math.round(T.max * it.dmg / 100)));
+    setHP(T, T.hp - d); floatText(c, T.img, '-' + d); hitFx(T); sfx('hit');
+    await wait(500);
+    await say(`¡${T.label} pierde ${d} PS!`);
+  }
+  if (it.heal && T.hp > 0) {
+    const h = Math.min(T.max - T.hp, Math.round(T.max * it.heal / 100));
+    if (h > 0) { setHP(T, T.hp + h); floatText(c, T.img, '+' + h, 'heal'); sfx('heal'); await wait(400); await say(`¡${T.label} recupera ${h} PS!`); }
+    else await say(`¡${T.label} ya tiene toda la vida!`);
+  }
+  if (it.cure && T.hp > 0) await cureAll(T);
+  if (it.stat !== 'none' && T.hp > 0) await applyFx(C, T, { fx: { stat: it.stat, amount: it.amount, target: 'self', chance: 100 }, color: it.color }, false);
+  if (it.status !== 'none' && T.hp > 0) await inflict(T, it.status, true);
+}
 async function replaceFainted() {
   if (!B.relay) return;
   const c = $('#arena');
@@ -3138,9 +3386,9 @@ async function replaceFainted() {
     for (let i = 0; i < B.units.length; i++) {
       const U = B.units[i];
       if (U.side !== side || !U.fainted || !B.bench[side].length) continue;
-      const f = B.bench[side].shift();
-      U.wrap.remove(); U.hud.remove(); if (U.shieldEl) U.shieldEl.remove();
-      const N = makeUnit(c, f, side, U.slot);
+      const e = B.bench[side].shift();
+      U.wrap.remove(); U.hud.remove(); if (U.shieldEl) U.shieldEl.remove(); U.gone = true;
+      const N = spawnFromBench(e, side, U.slot);
       B.units[i] = N;
       computeLabels(); paintDots();
       await N.img.decode().catch(() => {});
@@ -3195,6 +3443,8 @@ function target(key) {
   if (p[0] === 'set') return [S.settings, p[1]];
   if (p[0] === 'ti') return [S.settings.title, p[1]];
   if (p[0] === 'sel') return [S.settings.sel, p[1]];
+  if (p[0] === 'itset') return [S.settings.items, p[1]];
+  if (p[0] === 'it') { const it = S.settings.items.list[+p[1]]; return it ? [it, p[2]] : null; }
   if (p[0] === 'tim' || p[0] === 'mm') {
     const L = p[0] === 'tim' ? S.settings.title.musics : S.settings.menuMusics;
     if (p[1] === 'new') { const o = { ref: null, refTrim: null }; L.push(o); return [o, 'ref']; }
@@ -3291,13 +3541,14 @@ function onTrimInput(el) {
   if (info) { drawWave($('canvas', box), info, trim); $('.dur', box).textContent = trimText(info, trim); }
   save();
 }
-const IMG_MAX = { 'sel:bg': 1400, 'sel:logo': 800, 'ti:bg': 1400, 'ti:logo': 800, 'f:img': 400, 'tf:img': 400, 'f:poseAtk': 400, 'f:poseHurt': 400, 'ar:bg': 1400, 'ar:platImg': 500 };
+const IMG_MAX = { 'itset:icon': 200, 'it:img': 200, 'sel:bg': 1400, 'sel:logo': 800, 'ti:bg': 1400, 'ti:logo': 800, 'f:img': 400, 'tf:img': 400, 'f:poseAtk': 400, 'f:poseHurt': 400, 'ar:bg': 1400, 'ar:platImg': 500 };
 function rerenderFor(key) {
   if (/^(mm|tim):/.test(key)) {
     [S.settings.menuMusics, S.settings.title.musics].forEach(L => { for (let i = L.length - 1; i >= 0; i--) if (!L[i].ref) L.splice(i, 1); });
     save(true);
   }
   if (key.startsWith('tim:')) return renderTitleEditor();
+  if (key.startsWith('itset:') || key.startsWith('it:')) { if ($('#itBox')) renderItemsEditor(); return; }
   if (key.startsWith('sel:')) { applySelSkin(); if ($('#selBox')) renderSelEditor(); return; }
   if (key.startsWith('mm:')) {
     if (!$('#modal').hidden && $('#mmBox')) { $('#mmBox').innerHTML = menuMusicSlot(); hydrateTrims($('#mmBox')); }
@@ -3887,11 +4138,11 @@ $('#fForm').addEventListener('click', async e => {
         }
         if (a.kind === 'status' && a.status.type !== 'none') {
           const T = tgts[0], ty = a.status.type;
-          if (ty === 'confusion') T.confused = true; else T.status = ty;
+          if (ty === 'confusion') T.confused = true; else if (ty === 'love') T.inLove = true; else T.status = ty;
           updateStatusVisual(T);
           await statusAnim(pv, T, ty, 'inflict');
           await wait(1500);
-          T.status = null; T.confused = false; updateStatusVisual(T);
+          T.status = null; T.confused = false; T.inLove = false; updateStatusVisual(T);
         }
         if (a.kind === 'protect' || a.kind === 'vanish' || a.kind === 'status' || a.kind === 'form') {}
         else if (a.kind === 'heal') floatText(pv, A.img, '+' + Math.round(f.hp * a.power / 100), 'heal');
@@ -4025,8 +4276,14 @@ function renderArenaEditor() {
         <div></div>
         <label>Turnos de «${esc(st.status.confusion.name)}» (mín.)<input type="number" min="1" max="8" value="${st.status.confMin}" data-str="confMin"></label>
         <label>Turnos de «${esc(st.status.confusion.name)}» (máx.)<input type="number" min="1" max="8" value="${st.status.confMax}" data-str="confMax"></label>
+        <div></div>
+        ${statField('data-str', 'burnPct', `PS que quita «${esc(st.status.burn.name)}» por turno`, 1, 50, st.status.burnPct, '%')}
+        ${statField('data-str', 'burnAtk', `Ataque que pierde con «${esc(st.status.burn.name)}»`, 0, 90, st.status.burnAtk, '%')}
+        ${statField('data-str', 'loveChance', `Prob. de no atacar («${esc(st.status.love.name)}»)`, 0, 100, st.status.loveChance, '%')}
+        <label>Turnos de «${esc(st.status.love.name)}» (mín.)<input type="number" min="1" max="8" value="${st.status.loveMin}" data-str="loveMin"></label>
+        <label>Turnos de «${esc(st.status.love.name)}» (máx.)<input type="number" min="1" max="8" value="${st.status.loveMax}" data-str="loveMax"></label>
       </div>
-      <p class="note" style="margin-top:6px">La parálisis también reduce la velocidad a la mitad. Veneno, parálisis y sueño no se acumulan entre sí; la borrachera sí puede sumarse a otro estado.</p>
+      <p class="note" style="margin-top:6px">La parálisis también reduce la velocidad a la mitad y la quemadura reduce el ataque. Veneno, parálisis, sueño y quemadura no se acumulan entre sí; la borrachera y el enamoramiento sí pueden sumarse a otro estado.</p>
     </div>
   </div>`;
   if (a) applyArena($('#arenaPrev'), a);
@@ -4052,10 +4309,11 @@ function onArenaField(e) {
     if (f === 'name') el.closest('.stcard').querySelector('.stcard-head b').textContent = ST_ICON[k] + ' ' + q.name;
   } else if (el.dataset.str) {
     const k = el.dataset.str, q = S.settings.status;
-    const lim = { poisonPct: [1, 50], paraChance: [0, 100], confHit: [0, 100], sleepMin: [1, 6], sleepMax: [1, 6], confMin: [1, 8], confMax: [1, 8] }[k];
+    const lim = { poisonPct: [1, 50], paraChance: [0, 100], confHit: [0, 100], sleepMin: [1, 6], sleepMax: [1, 6], confMin: [1, 8], confMax: [1, 8], burnPct: [1, 50], burnAtk: [0, 90], loveChance: [0, 100], loveMin: [1, 8], loveMax: [1, 8] }[k];
     q[k] = num(val, q[k], lim[0], lim[1]);
     if (q.sleepMax < q.sleepMin) q.sleepMax = q.sleepMin;
     if (q.confMax < q.confMin) q.confMax = q.confMin;
+    if (q.loveMax < q.loveMin) q.loveMax = q.loveMin;
     if (out) out.textContent = q[k] + '%';
   } else if (el.dataset.set) {
     const k = el.dataset.set;
@@ -4080,11 +4338,11 @@ $('#aForm').addEventListener('click', async e => {
     try {
       c.scrollIntoView({ behavior: 'smooth', block: 'center' });
       await wait(350);
-      if (k === 'confusion') U.confused = true; else U.status = k;
+      if (k === 'confusion') U.confused = true; else if (k === 'love') U.inLove = true; else U.status = k;
       updateStatusVisual(U);
       await withAudioWait(() => statusAnim(c, U, k, 'inflict'));
       await wait(2200);
-    } finally { U.status = null; U.confused = false; updateStatusVisual(U); edA.busy = false; }
+    } finally { U.status = null; U.confused = false; U.inLove = false; updateStatusVisual(U); edA.busy = false; }
   } else if (act === 'testIntro') {
     if (edA.busy) return; edA.busy = true;
     const c = $('#arenaPrev');
@@ -4131,7 +4389,7 @@ const O = { phase: 'idle', role: null, code: '', peer: null, conns: {}, hostConn
   lobby: null, roster: null, incoming: null, match: null, myTeam: [], deferStart: null, lastGid: null, busy: false, msg: '', savedStatus: null };
 const FMT_LABEL = { single: '👤 1 vs 1', double: '👥 2 vs 2', triple: '🔁 3 vs 3 (relevos)' };
 const fmtN = f => FMT_N[f] || 1;
-const rosterSig = () => { const t = JSON.stringify({ f: S.fighters, a: S.arenas, s: S.settings.status }); let h = 0; for (let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) | 0; return t.length + ':' + h; };
+const rosterSig = () => { const t = JSON.stringify({ f: S.fighters, a: S.arenas, s: S.settings.status, i: S.settings.items }); let h = 0; for (let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) | 0; return t.length + ':' + h; };
 const randCode = () => { const a = 'abcdefghjkmnpqrstuvwxyz23456789'; return Array.from({ length: 4 }, () => a[Math.floor(Math.random() * a.length)]).join(''); };
 try { O.name = localStorage.getItem('pokemdk-name') || ''; } catch (e) {}
 function openPeer(id) {
@@ -4174,7 +4432,7 @@ function broadcastLobby() {
   lobbyTimer = setTimeout(() => { lobbyTimer = null; const s = lobbySnap(); O.players.forEach(p => toClient(p.pid, s)); }, 60);
 }
 async function sendRosterTo(conn) {
-  const json = JSON.stringify({ fighters: S.fighters, arenas: S.arenas, status: S.settings.status });
+  const json = JSON.stringify({ fighters: S.fighters, arenas: S.arenas, status: S.settings.status, items: S.settings.items });
   const ids = [...new Set([...json.matchAll(/"m:([a-z0-9]+)"/g)].map(x => x[1]))].filter(id => MEDIA[id]);
   const ver = O.ver;
   const JC = 4000, jn = Math.max(1, Math.ceil(json.length / JC));
@@ -4325,7 +4583,7 @@ function onClient(d) {
     if (d.t === 'rosterDone' && O.incoming && d.ver === O.incoming.ver) {
       try {
         const doc = JSON.parse(O.incoming.jparts.join('').replace(/"m:([a-z0-9]+)"/g, '"r:$1"'));
-        O.roster = { fighters: (doc.fighters || []).map(normFighter), arenas: (doc.arenas || []).map(normArena), status: normStatusCfg(doc.status || {}), ver: d.ver };
+        O.roster = { fighters: (doc.fighters || []).map(normFighter), arenas: (doc.arenas || []).map(normArena), status: normStatusCfg(doc.status || {}), items: normItems(doc.items), ver: d.ver };
         if (!O.roster.arenas.length) O.roster.arenas = defaultArenas();
       } catch (e) { O.msg = 'No se pudieron leer los personajes del anfitrión.'; }
       O.incoming = null;
@@ -4535,7 +4793,7 @@ function launchOnline(sm) {
   O.msg = '';
   B.online = { side: O.match.side, mid: sm.mid, gid: sm.gid, turn: 0, acts: {}, mine: {}, hpAt: {}, waiting: false, ended: false, warned: false };
   showView('battle');
-  startBattle({ teams: [t0.map(clone), t1.map(clone)], arena });
+  startBattle({ teams: [t0.map(clone), t1.map(clone)], arena, items: O.role === 'host' ? S.settings.items : ((O.roster && O.roster.items) || S.settings.items) });
 }
 const sendMatch = msg => { const o = B.online; if (o) toServer({ t: 'mmsg', mid: o.mid, msg }); };
 function onAct(d) {
@@ -4551,7 +4809,7 @@ function canTransformCore(C) {
 }
 function onlineSubmit() {
   const o = B.online, t = o.turn;
-  const acts = B.pending.map(a => ({ slot: a.C.slot, mi: a.mi, t: a.target ? B.units.indexOf(a.target) : -1, mega: !!a.mega }));
+  const acts = B.pending.map(a => ({ slot: a.C.slot, mi: a.mi, t: a.target ? B.units.indexOf(a.target) : -1, mega: !!a.mega, it: a.item != null ? a.item : -1, sw: a.sw != null ? a.sw : -1 }));
   o.mine[t] = { t: 'act', gid: o.gid, turn: t, side: o.side, acts, hp: o.hpAt[t] };
   (o.acts[t] = o.acts[t] || {})[o.side] = acts;
   sendMatch(o.mine[t]);
@@ -4575,6 +4833,8 @@ function tryResolveOnline() {
       if (!C || C.fainted || C.charging) continue;
       const mi = Number.isInteger(e.mi) && e.mi >= 0 && e.mi < C.f.attacks.length ? e.mi : 0;
       const target = Number.isInteger(e.t) && e.t >= 0 && e.t < B.units.length ? B.units[e.t] : null;
+      if (Number.isInteger(e.sw) && e.sw >= 0 && B.relay && e.sw < B.bench[side].length) { list.push({ C, mi: 0, sw: e.sw }); continue; }
+      if (Number.isInteger(e.it) && e.it >= 0 && e.it < B.items.length) { list.push({ C, mi: 0, item: e.it, target }); continue; }
       const mega = !!e.mega && !megaTaken && canTransformCore(C);
       if (mega) megaTaken = true;
       list.push({ C, mi, target, mega });
