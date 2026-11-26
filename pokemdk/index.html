@@ -1463,6 +1463,7 @@ function normItems(x) {
   if (!x || typeof x !== 'object') return { on: true, list: defaultItems(), icon: null, label: 'Mochila', pick: 3 };
   return { on: x.on !== false, list: (Array.isArray(x.list) ? x.list : []).slice(0, 12).map(normItem), icon: refOr(x.icon), label: str(x.label, 'Mochila', 20), pick: num(x.pick, 3, 1, 12) };
 }
+const ACCENTS = { es: ['es', '🇪🇸 Español'], 'en-GB': ['en-GB', '🇬🇧 Británico'], 'en-US': ['en-US', '🇺🇸 Americano'], fr: ['fr', '🇫🇷 Francés'], it: ['it', '🇮🇹 Italiano'], de: ['de', '🇩🇪 Alemán'], pt: ['pt', '🇧🇷 Portugués'], ja: ['ja', '🇯🇵 Japonés'] };
 const INTRO_TEXTS = [
   '¡Hola! ¡Bienvenido al mundo de POKEMDK!',
   'Me llamo {nombre}, pero la gente me llama el profe de POKEMDK.',
@@ -1525,7 +1526,7 @@ function normSettings(s = {}) {
     title: normTitle(s.title),
     sel: normSel(s.sel),
     items: normItems(s.items),
-    tts: (t => ({ intro: t.intro !== false, voice: typeof t.voice === 'string' ? t.voice : '',
+    tts: (t => ({ intro: t.intro !== false, voice: typeof t.voice === 'string' ? t.voice : '', accent: oneOf(t.accent, Object.keys(ACCENTS), 'es'),
       rate: clamp(Number(t.rate ?? 1) || 1, .5, 2), pitch: clamp(Number(t.pitch ?? .8), 0, 2) }))(s.tts && typeof s.tts === 'object' ? s.tts : {}),
     intro: normIntro(s.intro),
     myBag: Array.isArray(s.myBag) ? s.myBag.filter(x => typeof x === 'string').slice(0, 12) : [],
@@ -2788,12 +2789,23 @@ $('#msg').onclick = () => { skipType = true; };
 const TTS_OK = typeof window.speechSynthesis !== 'undefined' && typeof window.SpeechSynthesisUtterance !== 'undefined';
 function ttsVoices() {
   if (!TTS_OK) return [];
-  const all = speechSynthesis.getVoices();
+  const all = speechSynthesis.getVoices(), acc = (ACCENTS[S.settings.tts.accent] || ACCENTS.es)[0].toLowerCase();
+  if (acc !== 'es') {
+    const male = v => /(daniel|george|arthur|oliver|harry|james|ryan|thomas|alex|fred|aaron|guy|david|mark|male|man\b)/i.test(v.name);
+    const match = all.filter(v => v.lang.replace('_', '-').toLowerCase().startsWith(acc)), rest = all.filter(v => !match.includes(v));
+    return match.filter(male).concat(match.filter(v => !male(v)), rest);
+  }
   const male = v => /(jorge|pablo|diego|carlos|juan|enrique|ra[uú]l|alvaro|álvaro|antonio|miguel|jos[eé]|manuel|andr[eé]s|gonzalo|alonso|dario|male|hombre|masculin)/i.test(v.name);
   const es = all.filter(v => /^es/i.test(v.lang)), rest = all.filter(v => !/^es/i.test(v.lang));
   return es.filter(male).concat(es.filter(v => !male(v)), rest);
 }
 if (TTS_OK) try { speechSynthesis.getVoices(); speechSynthesis.addEventListener('voiceschanged', () => { const sel = $('[data-tts="voice"]'); if (sel && sel.options.length < 2 && !$('#view-title').hidden) renderTitleEditor(); }); } catch (e) {}
+const langOf = v => (v.lang || '').replace('_', '-').toLowerCase();
+function accentVoices() {
+  if (!TTS_OK) return [];
+  const acc = (ACCENTS[S.settings.tts.accent] || ACCENTS.es)[0].toLowerCase();
+  return ttsVoices().filter(v => langOf(v).startsWith(acc));
+}
 function ttsStop() { if (TTS_OK) try { speechSynthesis.cancel(); } catch (e) {} }
 function speak(text) {
   if (!TTS_OK || S.settings.muted || !text || !speechSynthesis.getVoices().length) return Promise.resolve();
@@ -2802,8 +2814,10 @@ function speak(text) {
   return new Promise(res => {
     let done = false; const fin = () => { if (!done) { done = true; clearTimeout(to); res(); } };
     const u = new SpeechSynthesisUtterance(text.replace(/[*_~]/g, ''));
-    const vs = ttsVoices(), v = vs.find(x => x.voiceURI === T.voice) || vs[0];
-    if (v) { u.voice = v; u.lang = v.lang; } else u.lang = 'es-ES';
+    const acc = (ACCENTS[T.accent] || ACCENTS.es)[0];
+    const vs = ttsVoices(), mine = accentVoices(), v = vs.find(x => x.voiceURI === T.voice) || mine[0] || (T.accent === 'es' ? vs[0] : null);
+    if (v) { u.voice = v; u.lang = v.lang; }
+    else u.lang = acc === 'es' ? 'es-ES' : acc;   /* sin voz de ese acento: se pide por idioma (Android lo usa así) */
     u.rate = T.rate; u.pitch = T.pitch; u.volume = clamp(S.settings.sfxVol, 0, 1);
     u.onend = fin; u.onerror = fin;
     const to = setTimeout(fin, 1500 + text.length * 140);
@@ -5629,6 +5643,10 @@ function renderTitleEditor() {
       <div class="full sec"><div class="sec-t">🗣️ Voz que lee los textos</div>
         ${TTS_OK ? `<div class="fields">
           <label class="check full"><input type="checkbox" data-tts="intro" ${S.settings.tts.intro ? 'checked' : ''}> Leer en voz alta los textos de la secuencia (los que no tengan voz grabada)</label>
+          <label class="full">Acento<select data-tts="accent">${Object.entries(ACCENTS).map(([k, v]) => opt(k, S.settings.tts.accent, v[1])).join('')}</select></label>
+          ${(() => { const n = accentVoices().length, a = S.settings.tts.accent; return a === 'es' ? '' : n
+            ? `<p class="note full" style="margin-top:-4px;color:#80ed99">✔ Tu dispositivo tiene ${n} voz${n === 1 ? '' : 'es'} con este acento: leerá tus textos en español con ese acento.</p>`
+            : `<p class="note full" style="margin-top:-4px;color:#ff8f8f">⚠️ Este dispositivo no tiene ninguna voz con este acento, por eso suena igual. ${a === 'en-GB' ? 'En Windows: Configuración › Hora e idioma › Voz › Agregar voces › Inglés (Reino Unido), y reinicia el navegador. En el móvil: ajustes de «Texto a voz» y descarga la voz de inglés (Reino Unido). ' : 'Instala una voz de ese idioma en los ajustes de voz del dispositivo. '}En Chrome y Edge suele haber voces en inglés británico ya incluidas.</p>`; })()}
           <label class="full">Voz<select data-tts="voice"><option value="">Automática (voz de hombre si hay)</option>${ttsVoices().map(v => opt(v.voiceURI, S.settings.tts.voice, esc(v.name + ' · ' + v.lang))).join('')}</select></label>
           <label><span class="stat-row">Velocidad<output>${S.settings.tts.rate.toFixed(2)}</output></span><input type="range" min="0.5" max="2" step="0.05" value="${S.settings.tts.rate}" data-tts="rate"></label>
           <label><span class="stat-row">Tono (más bajo = más grave)<output>${S.settings.tts.pitch.toFixed(2)}</output></span><input type="range" min="0" max="2" step="0.05" value="${S.settings.tts.pitch}" data-tts="pitch"></label>
@@ -5748,6 +5766,7 @@ function onTitleField(e) {
     const el = e.target, T = S.settings.tts, k = el.dataset.tts;
     if (el.type === 'checkbox') T[k] = el.checked;
     else if (k === 'voice') T.voice = el.value;
+    else if (k === 'accent') { T.accent = el.value; T.voice = ''; save(); return renderTitleEditor(); }
     else { T[k] = clamp(Number(el.value), k === 'rate' ? .5 : 0, 2); const o = el.closest('label')?.querySelector('output'); if (o) o.textContent = T[k].toFixed(2); }
     return save();
   }
