@@ -151,6 +151,16 @@ body.sel-on{background:transparent}
 .bmatch i{font-size:11px;color:var(--muted);font-style:normal}
 .bmatch em{font-size:11px;color:var(--accent);font-style:normal}
 .bmatch .tw{color:#80ed99}.bmatch .tl{color:var(--muted);text-decoration:line-through}
+.tgroups{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px;margin-bottom:12px}
+.tgroup{background:#272a4d;border:2px solid var(--line);border-radius:12px;padding:10px}
+.tg-h{font-family:var(--pixel);font-size:11px;color:var(--accent);margin-bottom:6px}
+.tg-t{width:100%;border-collapse:collapse;font-size:13px}
+.tg-t th{color:var(--muted);font-weight:700;text-align:center;padding:2px}.tg-t th:first-child{text-align:left}
+.tg-t td{padding:3px 2px;text-align:center}.tg-t td:first-child{text-align:left;font-weight:700}
+.tg-t tr.q td:first-child{color:#80ed99}.tg-t tr.qm td:first-child{color:#d8f3dc}
+.tg-m{margin-top:8px;display:flex;flex-direction:column;gap:3px;font-size:12px}
+.tg-m i{color:var(--muted);font-style:normal}.tg-m em{font-style:normal}
+.tg-m .live{color:var(--accent)}.tg-m .tw{color:#80ed99;font-weight:800}.tg-m .tl{color:var(--muted);text-decoration:line-through}
 .tour-pl{display:flex;flex-wrap:wrap;gap:6px 14px}
 .on-row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
 .on-row input{max-width:160px;text-transform:uppercase;letter-spacing:4px;font-weight:800}
@@ -4545,11 +4555,29 @@ const connected = () => O.role === 'host' ? true : !!(O.hostConn && O.hostConn.o
 /* ---------------- servidor (solo el anfitrión) ---------------- */
 const pl = pid => O.players.find(p => p.pid === pid);
 const pname = pid => (pl(pid) || {}).name || 'Alguien';
+/* clasificación de un grupo: 3 puntos por victoria */
+function groupTable(g) {
+  const rows = g.pids.map((pid, k) => ({ pid, k, name: g.names[pid] || pname(pid), pj: 0, w: 0, l: 0, pts: 0 }));
+  const row = pid => rows.find(r => r.pid === pid);
+  g.matches.forEach(x => {
+    if (!x.winner) return;
+    const W = row(x.winner), L = row(x.winner === x.a ? x.b : x.a);
+    if (W) { W.pj++; W.w++; W.pts += 3; }
+    if (L) { L.pj++; L.l++; }
+  });
+  rows.sort((a, b) => (b.pts - a.pts) || (b.w - a.w) || (a.l - b.l) || (a.k - b.k));
+  const done = g.matches.every(x => x.winner);
+  rows.forEach((r, i) => { r.q = i < (O.tour ? O.tour.qualify : 0) ? (done ? 'ok' : 'maybe') : ''; });
+  return rows;
+}
+const tourSlot = ref => ref.g != null ? O.tour.groups[ref.g].matches[ref.i] : O.tour.rounds[ref.r][ref.i];
 function lobbySnap() {
   const T = O.tour;
   return { t: 'lobby', code: O.code,
     players: O.players.map(p => ({ pid: p.pid, name: p.name, busy: !!p.busy })),
-    tour: T ? { format: T.format, arenaId: T.arenaId, champion: T.champion ? pname(T.champion) : (T.championName || null),
+    tour: T ? { format: T.format, arenaId: T.arenaId, champion: T.champion ? pname(T.champion) : (T.championName || null), stage: T.stage || 'ko', qualify: T.qualify || 0,
+      groups: (T.groups || []).map(g => ({ name: g.name, table: groupTable(g).map(r => ({ n: r.name, pj: r.pj, w: r.w, l: r.l, pts: r.pts, q: r.q })),
+        matches: g.matches.map(x => ({ a: x.aName || pname(x.a), b: x.bName || pname(x.b), w: x.winner ? (x.winner === x.a ? 'a' : 'b') : null, live: !!x.mid && !x.winner })) })),
       rounds: T.rounds.map(r => r.map(x => ({ a: x.a ? (x.aName || pname(x.a)) : null, b: x.b ? (x.bName || pname(x.b)) : null, w: x.winner ? (x.winner === x.a ? 'a' : 'b') : null, live: !!x.mid && !x.winner }))) } : null };
 }
 let lobbyTimer = null;
@@ -4585,7 +4613,7 @@ function createMatch(a, b, format, arenaId, tourRef) {
   [a, b].forEach(pid => { const p = pl(pid); if (p) p.busy = m.mid; });
   Object.keys(O.challenges).forEach(k => { const c = O.challenges[k]; if ([a, b].includes(c.from) || [a, b].includes(c.to)) delete O.challenges[k]; });
   [a, b].forEach((pid, side) => toClient(pid, { t: 'match', mid: m.mid, side, opp: pname(side ? a : b), format, arenaId, tour: !!tourRef, rteams: m.rnd || null }));
-  if (tourRef) { const x = O.tour.rounds[tourRef.r][tourRef.i]; x.mid = m.mid; }
+  if (tourRef) { const x = tourSlot(tourRef); x.mid = m.mid; }
   broadcastLobby();
   return m;
 }
@@ -4601,11 +4629,30 @@ function finishMatch(m, winnerPid, why) {
   [m.a, m.b].forEach(pid => { const p = pl(pid); if (p && p.busy === m.mid) p.busy = null; });
   if (why) [m.a, m.b].filter(pid => pid !== why.skip).forEach(pid => toClient(pid, { t: 'mend', mid: m.mid, reason: why.reason }));
   if (m.tourRef && O.tour) {
-    const x = O.tour.rounds[m.tourRef.r] && O.tour.rounds[m.tourRef.r][m.tourRef.i];
-    if (x && !x.winner) { x.winner = winnerPid; x.aName = pname(x.a); x.bName = pname(x.b); advanceTour(); }
+    let x = null; try { x = tourSlot(m.tourRef); } catch (e) {}
+    if (x && !x.winner) { x.winner = winnerPid || (Math.random() < .5 ? x.a : x.b); x.aName = pname(x.a); x.bName = pname(x.b); advanceTour(); }
   }
   setTimeout(() => { delete O.matches[m.mid]; }, 60000);
   broadcastLobby();
+}
+function koFromSeeds(seeds) {
+  let size = 2; while (size < seeds.length) size *= 2;
+  const slots = seeds.concat(Array(size - seeds.length).fill(null)), pairs = [];
+  for (let i = 0; i < size / 2; i++) pairs.push({ a: slots[i], b: slots[size - 1 - i], winner: null, mid: null });
+  return pairs;
+}
+function startGroupTour(format, arenaId, pids, nGroups, qualify) {
+  const ids = pids.filter(pid => pl(pid) && !pl(pid).busy).sort(() => Math.random() - .5);
+  if (ids.length < 3) return toast('Para la fase de grupos hacen falta al menos 3 jugadores libres');
+  nGroups = Math.max(1, Math.min(nGroups, Math.floor(ids.length / 2)));
+  const groups = Array.from({ length: nGroups }, (_, k) => ({ name: 'ABCDEFGH'[k], pids: [], names: {}, matches: [] }));
+  ids.forEach((pid, i) => { const row = Math.floor(i / nGroups), k = row % 2 ? nGroups - 1 - (i % nGroups) : i % nGroups; groups[k].pids.push(pid); groups[k].names[pid] = pname(pid); });
+  groups.forEach(g => { for (let i = 0; i < g.pids.length; i++) for (let j = i + 1; j < g.pids.length; j++) g.matches.push({ a: g.pids[i], b: g.pids[j], winner: null, mid: null }); });
+  const minSize = Math.min(...groups.map(g => g.pids.length));
+  qualify = Math.max(1, Math.min(qualify, minSize - 1));
+  if (qualify * nGroups < 2) qualify = 2;
+  O.tour = { format, arenaId, stage: 'groups', groups, qualify, rounds: [], champion: null };
+  advanceTour();
 }
 function startTour(format, arenaId, pids) {
   const ids = pids.filter(pid => pl(pid) && !pl(pid).busy).sort(() => Math.random() - .5);
@@ -4620,6 +4667,26 @@ function startTour(format, arenaId, pids) {
 }
 function advanceTour() {
   const T = O.tour; if (!T || T.champion) return;
+  if (T.stage === 'groups') {
+    T.groups.forEach((g, gi) => g.matches.forEach((x, i) => {
+      if (x.winner) return;
+      const aOk = !!pl(x.a), bOk = !!pl(x.b);
+      if (!aOk || !bOk) { x.winner = aOk ? x.a : bOk ? x.b : x.a; x.aName = g.names[x.a]; x.bName = g.names[x.b]; return; }
+      if (!x.mid && !pl(x.a).busy && !pl(x.b).busy) createMatch(x.a, x.b, T.format, T.arenaId, { g: gi, i });
+    }));
+    if (!T.groups.every(g => g.matches.every(x => x.winner))) return broadcastLobby();
+    /* clasificados: primeros de cada grupo contra segundos de otro grupo */
+    const tables = T.groups.map(groupTable), firsts = [], rest = [];
+    tables.forEach(t => t.slice(0, T.qualify).forEach((r, pos) => (pos === 0 ? firsts : rest).push(r.pid)));
+    let seeds;
+    if (T.qualify === 2 && rest.length === firsts.length && firsts.length > 1) {
+      const G = firsts.length, sec = Array(G);
+      for (let i = 0; i < G; i++) sec[G - 1 - i] = rest[(i + 1) % G];
+      seeds = firsts.concat(sec);
+    } else seeds = firsts.concat(rest);
+    T.stage = 'ko'; T.rounds = [koFromSeeds(seeds)];
+    O.players.forEach(p => toClient(p.pid, { t: 'info', msg: '🏆 ¡Termina la fase de grupos! Empieza la eliminatoria.' }));
+  }
   const r = T.rounds.length - 1, round = T.rounds[r];
   round.forEach((x, i) => {
     if (x.winner) return;
@@ -4788,20 +4855,33 @@ function openChallengeDialog(pid, name) {
 }
 function openTourDialog() {
   const free = O.players.filter(p => !p.busy);
-  const st = { format: 'single', arenaId: (S.arenas[0] || {}).id, pids: free.map(p => p.pid) };
+  const st = { format: 'single', arenaId: (S.arenas[0] || {}).id, pids: free.map(p => p.pid), mode: 'ko', groups: 0, qualify: 2 };
   const draw = () => {
     openModal(`<h3>🏆 Organizar torneo</h3>
       <p class="tip" style="margin:0 0 8px">Formato de todos los combates</p>${formatButtons(st.format, 'tfmt')}
       <p class="tip" style="margin:12px 0 8px">Escenario</p>
       <div class="arena-picks">${S.arenas.map(a => `<button type="button" class="apick ${a.id === st.arenaId ? 'on' : ''}" data-tarena="${a.id}">${arenaThumb(a)}<b>${esc(a.name)}</b></button>`).join('')}</div>
+      <p class="tip" style="margin:12px 0 8px">Tipo de torneo</p>
+      <div class="mode"><button type="button" data-tmode="ko" class="${st.mode === 'ko' ? 'on' : ''}">⚔️ Eliminatoria directa</button><button type="button" data-tmode="groups" class="${st.mode === 'groups' ? 'on' : ''}">📊 Fase de grupos + eliminatoria</button></div>
+      ${st.mode === 'groups' ? (() => { const n = st.pids.length, auto = n <= 5 ? 1 : Math.ceil(n / 4), g = st.groups || auto; return `<div class="fields" style="margin-top:10px">
+        <label>Número de grupos<select data-tgroups>${[1, 2, 3, 4].filter(k => k <= Math.max(1, Math.floor(n / 2))).map(k => opt(k, g, k + (k === 1 ? ' grupo' : ' grupos') + (k === auto ? ' (recomendado)' : ''))).join('')}</select></label>
+        <label>Pasan por grupo<select data-tqual>${[1, 2, 3].map(k => opt(k, st.qualify, k === 1 ? 'El primero' : 'Los ' + k + ' primeros')).join('')}</select></label>
+        <p class="note full">En cada grupo juegan todos contra todos (victoria = 3 puntos). Los mejores pasan a una eliminatoria hasta la final.</p></div>`; })() : ''}
       <p class="tip" style="margin:12px 0 8px">Participantes (${st.pids.length})</p>
       <div class="tour-pl">${free.map(p => `<label class="check"><input type="checkbox" data-tpid="${p.pid}" ${st.pids.includes(p.pid) ? 'checked' : ''}> ${esc(p.name)}${p.pid === 'host' ? ' (tú)' : ''}</label>`).join('') || '<p class="note">No hay jugadores libres.</p>'}</div>
       <p class="note">El cuadro se sortea al azar. Si sois impares, alguien pasa directo a la siguiente ronda. Cada ronda empieza sola cuando acaba la anterior.</p>
-      <div class="row"><button class="btn" data-close>Cancelar</button><button class="btn primary" id="tGo" ${st.pids.length < 2 ? 'disabled' : ''}>¡Empezar torneo!</button></div>`, 'wide');
+      <div class="row"><button class="btn" data-close>Cancelar</button><button class="btn primary" id="tGo" ${st.pids.length < (st.mode === 'groups' ? 3 : 2) ? 'disabled' : ''}>¡Empezar torneo!</button></div>`, 'wide');
     $$('#modalCard [data-tfmt]').forEach(b => b.onclick = () => { st.format = b.dataset.tfmt; draw(); });
     $$('#modalCard [data-tarena]').forEach(b => b.onclick = () => { st.arenaId = b.dataset.tarena; draw(); });
     $$('#modalCard [data-tpid]').forEach(b => b.onchange = () => { st.pids = b.checked ? st.pids.concat(b.dataset.tpid) : st.pids.filter(x => x !== b.dataset.tpid); draw(); });
-    $('#tGo').onclick = () => { closeModal(); startTour(st.format, st.arenaId, st.pids); };
+    $$('#modalCard [data-tmode]').forEach(b => b.onclick = () => { st.mode = b.dataset.tmode; draw(); });
+    const sg = $('#modalCard [data-tgroups]'); if (sg) sg.onchange = () => { st.groups = +sg.value; };
+    const sq = $('#modalCard [data-tqual]'); if (sq) sq.onchange = () => { st.qualify = +sq.value; };
+    $('#tGo').onclick = () => {
+      closeModal();
+      if (st.mode === 'groups') { const n = st.pids.length; startGroupTour(st.format, st.arenaId, st.pids, st.groups || (n <= 5 ? 1 : Math.ceil(n / 4)), st.qualify); }
+      else startTour(st.format, st.arenaId, st.pids);
+    };
   };
   draw();
 }
@@ -4827,12 +4907,20 @@ function bagPicker(locked) {
   return `<h3 class="sub" style="margin-top:14px">${esc(I.label || 'Mochila')} · elige ${n}</h3><div class="on-team">${I.list.map(it => { const on = O.myBagSel.includes(it.id);
     return `<button type="button" class="btn sm ${on ? 'primary' : ''}" data-obag="${it.id}" ${locked ? 'disabled' : ''} title="${esc(itemInfo(it))}">${on ? '✔ ' : ''}${esc(it.name)} ×${it.qty}</button>`; }).join('')}</div>`;
 }
+function groupsHTML(T) {
+  if (!T.groups || !T.groups.length) return '';
+  return `<div class="tgroups">${T.groups.map(g => `<div class="tgroup"><div class="tg-h">GRUPO ${g.name}</div>
+    <table class="tg-t"><tr><th></th><th>PJ</th><th>G</th><th>P</th><th>Pts</th></tr>${g.table.map((r, i) => `<tr class="${r.q === 'ok' ? 'q' : r.q === 'maybe' ? 'qm' : ''}"><td>${i + 1}. ${esc(r.n)}</td><td>${r.pj}</td><td>${r.w}</td><td>${r.l}</td><td><b>${r.pts}</b></td></tr>`).join('')}</table>
+    <div class="tg-m">${g.matches.map(x => `<div class="${x.live ? 'live' : ''}"><span class="${x.w === 'a' ? 'tw' : x.w ? 'tl' : ''}">${esc(x.a)}</span> <i>vs</i> <span class="${x.w === 'b' ? 'tw' : x.w ? 'tl' : ''}">${esc(x.b)}</span>${x.live ? ' <em>⚔️</em>' : ''}</div>`).join('')}</div></div>`).join('')}</div>
+    ${T.stage === 'groups' ? `<p class="note">Pasan ${T.qualify === 1 ? 'el primero' : 'los ' + T.qualify + ' primeros'} de cada grupo a la eliminatoria.</p>` : ''}`;
+}
 function bracketHTML(T) {
   if (!T) return '';
   const nm = (x, k) => x[k] ? `<span class="${x.w === k ? 'tw' : x.w ? 'tl' : ''}">${esc(x[k])}</span>` : '<span class="muted">— pase directo —</span>';
   return `<div class="on-card" style="margin-top:14px"><h3>🏆 Torneo · ${FMT_LABEL[T.format]}</h3>
     ${T.champion ? `<p class="on-status ok" style="font-size:18px">👑 Campeón: ${esc(T.champion)}</p>` : ''}
-    <div class="bracket">${T.rounds.map((r, ri) => `<div class="bround"><div class="muted small">${ri === T.rounds.length - 1 && r.length === 1 ? 'FINAL' : r.length === 2 ? 'SEMIFINAL' : 'RONDA ' + (ri + 1)}</div>
+    ${groupsHTML(T)}
+    ${T.rounds.length ? '' : ''}<div class="bracket">${T.rounds.map((r, ri) => `<div class="bround"><div class="muted small">${ri === T.rounds.length - 1 && r.length === 1 ? 'FINAL' : r.length === 2 ? 'SEMIFINAL' : 'RONDA ' + (ri + 1)}</div>
       ${r.map(x => `<div class="bmatch ${x.live ? 'live' : ''}">${nm(x, 'a')}<i>vs</i>${nm(x, 'b')}${x.live ? '<em>⚔️ en juego</em>' : ''}</div>`).join('')}</div>`).join('')}</div></div>`;
 }
 function renderOnline() {
