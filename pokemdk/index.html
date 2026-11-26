@@ -63,6 +63,33 @@ body.sel-on{background:transparent}
 .bal-bar i{display:block;height:100%;background:linear-gradient(90deg,#38b000,#ffbe0b);transition:width .15s}
 .bal.over .bal-bar i{background:#ff4d4d}
 .bal .arow{flex-wrap:wrap}
+#introScr{position:fixed;inset:0;z-index:160;background:#000}
+.in{position:absolute;inset:0;overflow:hidden;container-type:size;background:radial-gradient(circle at 50% 40%,var(--c2) 0,var(--c1) 70cqmax);font-family:var(--pixel);user-select:none;-webkit-user-select:none;cursor:pointer}
+.in .ts-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.9}
+.in-pic{position:absolute;left:50%;top:5cqh;height:58cqh;width:90cqw;transform:translateX(-50%);display:flex;align-items:flex-end;justify-content:center;animation:inAppear 1.1s ease both}
+.in-pic img{height:100%;width:auto;max-width:100%;object-fit:contain;image-rendering:pixelated;image-rendering:crisp-edges;filter:drop-shadow(0 1.2cqmin 0 rgba(0,0,0,.35))}
+@keyframes inAppear{from{opacity:0;transform:translateX(-50%) translateY(6cqh)}}
+.in-box{position:absolute;left:3cqw;right:3cqw;bottom:3cqh;min-height:24cqh;background:#f8f8f8;color:#282828;border:max(4px,.9cqmin) solid #383848;border-radius:2cqmin;box-shadow:inset 0 0 0 max(3px,.6cqmin) #c8c8d8,0 1cqmin 0 rgba(0,0,0,.35);padding:4.2cqmin 4cqmin 3cqmin;font-size:clamp(11px,3.3cqmin,26px);line-height:1.75;cursor:pointer}
+.in-txt{margin:0;white-space:pre-wrap;min-height:2em}
+.in-name{position:absolute;left:3cqmin;top:0;transform:translateY(-60%);background:#383848;color:#fff;padding:.6cqmin 2cqmin;border-radius:1.2cqmin;font-size:clamp(9px,2.4cqmin,18px)}
+.in-next{position:absolute;right:3cqmin;bottom:1.6cqmin;color:#e63946;animation:tsBlink .8s steps(1) infinite}
+.in-skip{position:absolute;top:12px;left:12px;z-index:5;background:rgba(0,0,0,.5);color:#fff;border:2px solid rgba(255,255,255,.6);border-radius:10px;padding:6px 12px;font-weight:800;font-family:var(--sans);font-size:13px}
+.in-choice{position:absolute;left:3cqw;right:3cqw;top:3cqh;bottom:31cqh;overflow-y:auto;display:flex;flex-direction:column;gap:12px;cursor:default;font-family:var(--sans)}
+.in-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px}
+.in-item{position:relative;background:#f8f8f8;color:#282828;border:3px solid #383848;border-left:10px solid var(--c);border-radius:12px;padding:10px;text-align:left;display:flex;flex-direction:column;gap:4px;font-family:var(--sans)}
+.in-item img{height:48px;width:48px;object-fit:contain}
+.in-item .in-emo{font-size:34px;line-height:48px}
+.in-item b{font-size:14px}.in-item small{font-size:12px;color:#555}
+.in-item.on{background:#fff3c4;outline:4px solid #ffbe0b}
+.in-item i{position:absolute;top:6px;right:8px;font-style:normal;font-weight:900;color:#2b9348;font-size:20px}
+.in-ok{margin:0 auto}
+.in-frame{position:relative;aspect-ratio:16/9;border-radius:12px;overflow:hidden;border:2px solid var(--line);background:#000;margin-bottom:12px}
+.rnd-teams{display:flex;align-items:center;justify-content:center;gap:16px;flex-wrap:wrap;margin:10px 0 16px}
+.rnd-row{display:flex;gap:10px;justify-content:center;margin-top:6px}
+.rnd-card{background:#1f2240;border:2px solid var(--line);border-radius:12px;padding:8px;width:110px;display:flex;flex-direction:column;align-items:center;gap:4px;animation:rndIn .5s cubic-bezier(.3,1.5,.5,1) both}
+.rnd-card img{height:80px;width:80px;object-fit:contain}
+.rnd-card b{font-size:12px;text-align:center}
+@keyframes rndIn{from{transform:rotateY(90deg) scale(.6);opacity:0}}
 .mlist{display:flex;flex-direction:column;gap:10px;margin-top:6px}
 .mlist .file-btn{align-self:flex-start}
 .setup-h{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap}
@@ -468,10 +495,13 @@ body.ts-lock{overflow:hidden}
         <button data-format="single" class="on">👤 Individual (1 vs 1)</button>
         <button data-format="double">👥 Por parejas (2 vs 2)</button>
         <button data-format="triple">🔁 3 vs 3 (relevos)</button>
+        <button data-format="rnd1">🎲 Aleatorio 1 vs 1</button>
+        <button data-format="rnd3">🎲 Aleatorio 3 vs 3</button>
       </div>
       <div id="pickArea">
         <h3 class="sub">Escenario</h3>
         <div class="arena-picks" id="arenaPick"></div>
+        <p class="note rnd-note" hidden style="margin:14px 0">🎲 Los personajes de los dos bandos se sortean al pulsar «¡A combatir!».</p>
         <div class="pickers">
           <div><h3 class="sub"><span id="p0Title">Jugador 1</span><button class="link" data-clear="0" hidden>Vaciar</button></h3><div class="pick-grid" id="pick0"></div></div>
           <div class="vs">VS</div>
@@ -549,6 +579,7 @@ body.ts-lock{overflow:hidden}
 
 <div id="selBg" hidden></div>
 <div id="titleScr" hidden></div>
+<div id="introScr" hidden></div>
 <div class="modal" id="modal" hidden><div class="card" id="modalCard"></div></div>
 <div class="toast" id="toast"></div>
 
@@ -1419,8 +1450,27 @@ const defaultItems = () => [
   normItem({ name: 'Bebida energética', stat: 'spd', amount: 2, qty: 1, color: '#ffd60a' })
 ];
 function normItems(x) {
-  if (!x || typeof x !== 'object') return { on: true, list: defaultItems(), icon: null, label: 'Mochila' };
-  return { on: x.on !== false, list: (Array.isArray(x.list) ? x.list : []).slice(0, 12).map(normItem), icon: refOr(x.icon), label: str(x.label, 'Mochila', 20) };
+  if (!x || typeof x !== 'object') return { on: true, list: defaultItems(), icon: null, label: 'Mochila', pick: 3 };
+  return { on: x.on !== false, list: (Array.isArray(x.list) ? x.list : []).slice(0, 12).map(normItem), icon: refOr(x.icon), label: str(x.label, 'Mochila', 20), pick: num(x.pick, 3, 1, 12) };
+}
+const INTRO_TEXTS = [
+  '¡Hola! ¡Bienvenido al mundo de POKEMDK!',
+  'Me llamo {nombre}, pero la gente me llama el profe de POKEMDK.',
+  'Este mundo está habitado por unas criaturas muy raras: tus amigos.',
+  'Antes de empezar tu aventura, tendrás que preparar tu mochila.',
+  '¡Buena elección! {objetos}… ya veremos si te sirven de algo.',
+  '¡Tu aventura en POKEMDK está a punto de empezar! ¡Vamos allá!'
+];
+function normIntro(x) {
+  if (!x || typeof x !== 'object') x = {};
+  const col = (v, d) => /^#[0-9a-f]{6}$/i.test(v || '') ? v : d;
+  const tx = Array.isArray(x.texts) ? x.texts : [];
+  return { enabled: x.enabled !== false, once: !!x.once, seen: !!x.seen, name: str(x.name, 'Profesor', 20), img: refOr(x.img), pixel: num(x.pixel, 64, 16, 200),
+    c1: col(x.c1, '#05060f'), c2: col(x.c2, '#2b2f5a'), bg: refOr(x.bg),
+    texts: INTRO_TEXTS.map((d, i) => typeof tx[i] === 'string' ? tx[i].slice(0, 200) : d),
+    choiceAfter: num(x.choiceAfter, 4, 0, 6), musics: normList(x.musics), useTitleMusic: x.useTitleMusic !== false,
+    blip: oneOf(x.blip, ['beep', 'custom', 'none'], 'beep'), blipSnd: refOr(x.blipSnd), blipSndTrim: normTrim(x.blipSndTrim), blipVol: num(x.blipVol, 70, 0, 100),
+    ...Object.fromEntries(INTRO_TEXTS.flatMap((_, i) => [['v' + i, refOr(x['v' + i])], ['v' + i + 'Trim', normTrim(x['v' + i + 'Trim'])]])) };
 }
 function normSel(s = {}) {
   if (!s || typeof s !== 'object') s = {};
@@ -1465,6 +1515,10 @@ function normSettings(s = {}) {
     title: normTitle(s.title),
     sel: normSel(s.sel),
     items: normItems(s.items),
+    tts: (t => ({ intro: t.intro !== false, voice: typeof t.voice === 'string' ? t.voice : '',
+      rate: clamp(Number(t.rate ?? 1) || 1, .5, 2), pitch: clamp(Number(t.pitch ?? .8), 0, 2) }))(s.tts && typeof s.tts === 'object' ? s.tts : {}),
+    intro: normIntro(s.intro),
+    myBag: Array.isArray(s.myBag) ? s.myBag.filter(x => typeof x === 'string').slice(0, 12) : [],
     balance: { on: !s.balance || s.balance.on !== false, budget: num(s.balance && s.balance.budget, 11, 0, 60) },
     muted: !!s.muted
   };
@@ -1698,9 +1752,13 @@ function renderItemsEditor() {
     <div class="imgrow" style="margin-bottom:12px">
       ${imgSlot('itset:icon', I.icon, 'Icono de la mochila', { optional: true })}
       <div class="fields"><label class="full">Nombre del botón<input type="text" maxlength="20" value="${esc(I.label)}" data-itg="label"></label>
+        <label class="full">Objetos que elige cada jugador<input type="number" min="1" max="12" value="${I.pick}" data-itg="pick"></label>
         <p class="note full">Sube la imagen que quieras para el botón de la mochila en combate (PNG, mejor con fondo transparente; si no, usa ✂️ Quitar fondo).</p></div>
     </div>
     <p class="note" style="margin:0 0 12px">Cada jugador empieza el combate con la misma mochila. Usar un objeto gasta el turno de ese personaje, pero va antes que los ataques. En online se usan los objetos del anfitrión.</p>
+    ${I.list.length ? `<div class="sec-t">Tu mochila (${Math.min(I.pick, I.list.length)} objetos)</div>
+    <p class="note" style="margin:0 0 6px">La eliges en la secuencia inicial; también puedes cambiarla aquí.</p>
+    <div class="on-team" style="margin-bottom:14px">${I.list.map(it => { const on = validBag(S.settings.myBag, I.list, Math.min(I.pick, I.list.length)).includes(it.id); return `<button type="button" class="btn sm ${on ? 'primary' : ''}" data-mybag="${it.id}">${on ? '✔ ' : ''}${esc(it.name)}</button>`; }).join('')}</div>` : ''}
     ${I.list.map((it, i) => `
     <div class="it-card" style="--c:${it.color}">
       <div class="it-head"><b>${it.img ? '' : '🎒 '}${esc(it.name)}</b><button class="btn sm danger" data-itdel="${i}" type="button">✕ Quitar</button></div>
@@ -1735,7 +1793,7 @@ $('#itemsBtn').onclick = openItemsEditor;
 function onItemField(e) {
   const el = e.target; if (!el.closest || !el.closest('#itBox') || el.type === 'file' || el.dataset.trim) return;
   const I = S.settings.items;
-  if (el.dataset.itg) { if (el.dataset.itg === 'label') I.label = String(el.value).slice(0, 20) || 'Mochila'; else I.on = el.checked; save(); return; }
+  if (el.dataset.itg) { if (el.dataset.itg === 'label') I.label = String(el.value).slice(0, 20) || 'Mochila'; else if (el.dataset.itg === 'pick') { I.pick = num(el.value, I.pick, 1, 12); if (e.type === 'change') renderItemsEditor(); } else I.on = el.checked; save(); return; }
   if (!el.dataset.itf) return;
   const it = I.list[+el.dataset.i]; if (!it) return;
   const k = el.dataset.itf;
@@ -1753,7 +1811,13 @@ $('#modalCard').addEventListener('input', e => { if (e.target.tagName !== 'SELEC
 $('#modalCard').addEventListener('change', onItemField);
 $('#modalCard').addEventListener('click', e => {
   if (!$('#itBox')) return;
-  const add = e.target.closest('[data-itadd]'), del = e.target.closest('[data-itdel]');
+  const add = e.target.closest('[data-itadd]'), del = e.target.closest('[data-itdel]'), mb = e.target.closest('[data-mybag]');
+  if (mb) {
+    const L = S.settings.items.list, n = Math.min(S.settings.items.pick, L.length), id = mb.dataset.mybag;
+    let cur = validBag(S.settings.myBag, L, n);
+    if (cur.includes(id)) cur = cur.filter(x => x !== id); else { cur.push(id); while (cur.length > n) cur.shift(); }
+    S.settings.myBag = cur; save(true); renderItemsEditor(); return;
+  }
   if (add) { S.settings.items.list.push(normItem({ name: 'Nuevo objeto', heal: 25 })); save(true); renderItemsEditor(); }
   if (del) { S.settings.items.list.splice(+del.dataset.itdel, 1); save(true); renderItemsEditor(); }
 });
@@ -2522,7 +2586,17 @@ $('#modal').addEventListener('click', e => { if (e.target.id === 'modal' || e.ta
    Preparación del combate
    ========================================================= */
 const B = { mode: 'cpu', format: 'single', sel: [[], []], arenaId: null, units: [], busy: false, active: false, arena: null };
-const FMT_N = { single: 1, double: 2, triple: 3 };
+const FMT_N = { single: 1, double: 2, triple: 3, rnd1: 1, rnd3: 3 };
+const isRnd = f => f === 'rnd1' || f === 'rnd3';
+/* sorteo de equipos: sin repetir dentro del equipo y, si hay bastantes, tampoco entre equipos */
+function drawTeams(list, n) {
+  const pool = list.filter(f => f.attacks && f.attacks.length).length >= n ? list.filter(f => f.attacks && f.attacks.length) : list;
+  const shuf = a => a.slice().sort(() => Math.random() - .5);
+  if (!pool.length) return [[], []];
+  if (pool.length >= n * 2) { const s = shuf(pool); return [s.slice(0, n), s.slice(n, n * 2)]; }
+  const pickTeam = () => { const s = shuf(pool), t = []; for (let i = 0; i < n; i++) t.push(s[i % s.length]); return t; };
+  return [pickTeam(), pickTeam()];
+}
 const need = () => FMT_N[B.format] || 1;
 
 function arenaThumb(a) {
@@ -2549,6 +2623,7 @@ function renderSetup() {
   fixSelection();
   if (!getArena(B.arenaId)) B.arenaId = S.arenas[0].id;
   const n = need();
+  $('.pickers').hidden = isRnd(B.format); $('.rnd-note').hidden = !isRnd(B.format);
   $('#p0Title').textContent = (B.mode === 'cpu' ? 'Tu equipo' : 'Jugador 1') + (n > 1 ? ' · elige ' + n + (n === 3 ? ' (salen en ese orden)' : '') : '');
   $('#p1Title').textContent = (B.mode === 'cpu' ? 'Rival (CPU)' : 'Jugador 2') + (n > 1 ? ' · elige ' + n : '');
   $$('[data-clear]').forEach(b => b.hidden = n < 2);
@@ -2594,7 +2669,22 @@ function renderSetupKeepEmpty(side) {
   B.sel[side] = saved;
   $$(`#pick${side} .pick`).forEach(p => { p.classList.remove('on'); p.querySelector('.badge')?.remove(); });
 }
-$('#startBtn').onclick = () => { sfx('select'); startBattle(); };
+$('#startBtn').onclick = () => { sfx('select'); if (isRnd(B.format)) return randomStart(); startBattle(); };
+/* combate aleatorio: sorteo con pequeña presentación */
+function randomStart() {
+  const n = need(), [t0, t1] = drawTeams(S.fighters, n);
+  if (!t0.length) return toast('Crea algún personaje primero');
+  const ar = getArena(B.arenaId) || S.arenas[0];
+  const row = (t, side) => t.map((f, i) => `<div class="rnd-card" style="animation-delay:${.15 + i * .25 + side * .1}s"><img src="${esc(src(f.img))}" alt="" style="transform:scaleX(${flipOf(f, side)})"><b>${esc(f.name)}</b></div>`).join('');
+  openModal(`<div id="rndBox" style="text-align:center"><h3>🎲 ¡Sorteo!</h3>
+    <div class="rnd-teams"><div><div class="muted small">${B.mode === 'cpu' ? 'TU EQUIPO' : 'JUGADOR 1'}</div><div class="rnd-row">${row(t0, 0)}</div></div>
+    <div class="vs">VS</div>
+    <div><div class="muted small">${B.mode === 'cpu' ? 'RIVAL (CPU)' : 'JUGADOR 2'}</div><div class="rnd-row">${row(t1, 1)}</div></div></div>
+    <div class="row" style="justify-content:center"><button class="btn" id="rndAgain" type="button">🔄 Volver a sortear</button><button class="btn primary" id="rndGo" type="button">¡A combatir!</button></div></div>`, 'wide');
+  sfx('appear');
+  $('#rndAgain').onclick = () => { closeModal(); randomStart(); };
+  $('#rndGo').onclick = () => { closeModal(); startBattle({ teams: [t0.map(clone), t1.map(clone)], arena: ar }); };
+}
 
 /* =========================================================
    Combate (individual y por parejas)
@@ -2660,7 +2750,16 @@ async function startBattle(opts) {
   if (B.relay) { B.bench = teams.map(t => t.slice(1).map(f => ({ f: clone(f), hp: null }))); teams = teams.map(t => [t[0]]); } else B.bench = [[], []];
   B.items = itemsCfg.on ? clone(itemsCfg.list) : [];
   B.bagIcon = itemsCfg.icon || null; B.bagLabel = itemsCfg.label || 'Mochila';
-  B.bag = [0, 1].map(() => B.items.map(it => it.qty));
+  {
+    const L = B.items, n = Math.min(itemsCfg.pick || 3, L.length);
+    const ids = side => {
+      if (opts && opts.bags) return validBag(opts.bags[side], L, n);
+      if (B.online) return L.map(it => it.id);
+      if (side === 0 || B.mode === 'pvp') return validBag(S.settings.myBag, L, n);
+      return L.map(it => it.id).sort(() => Math.random() - .5).slice(0, n);
+    };
+    B.bag = [0, 1].map(side => { const mine = ids(side); return L.map(it => mine.includes(it.id) ? it.qty : 0); });
+  }
   B.doubles = teams[0].length === 2;
   c.classList.toggle('doubles', B.doubles);
   B.arena = clone(ar);
@@ -2675,6 +2774,32 @@ async function startBattle(opts) {
 
 let skipType = false;
 $('#msg').onclick = () => { skipType = true; };
+/* voz automática del navegador (estilo Loquendo) */
+const TTS_OK = typeof window.speechSynthesis !== 'undefined' && typeof window.SpeechSynthesisUtterance !== 'undefined';
+function ttsVoices() {
+  if (!TTS_OK) return [];
+  const all = speechSynthesis.getVoices();
+  const male = v => /(jorge|pablo|diego|carlos|juan|enrique|ra[uú]l|alvaro|álvaro|antonio|miguel|jos[eé]|manuel|andr[eé]s|gonzalo|alonso|dario|male|hombre|masculin)/i.test(v.name);
+  const es = all.filter(v => /^es/i.test(v.lang)), rest = all.filter(v => !/^es/i.test(v.lang));
+  return es.filter(male).concat(es.filter(v => !male(v)), rest);
+}
+if (TTS_OK) try { speechSynthesis.getVoices(); speechSynthesis.addEventListener('voiceschanged', () => { const sel = $('[data-tts="voice"]'); if (sel && sel.options.length < 2 && !$('#view-title').hidden) renderTitleEditor(); }); } catch (e) {}
+function ttsStop() { if (TTS_OK) try { speechSynthesis.cancel(); } catch (e) {} }
+function speak(text) {
+  if (!TTS_OK || S.settings.muted || !text || !speechSynthesis.getVoices().length) return Promise.resolve();
+  const T = S.settings.tts;
+  ttsStop();
+  return new Promise(res => {
+    let done = false; const fin = () => { if (!done) { done = true; clearTimeout(to); res(); } };
+    const u = new SpeechSynthesisUtterance(text.replace(/[*_~]/g, ''));
+    const vs = ttsVoices(), v = vs.find(x => x.voiceURI === T.voice) || vs[0];
+    if (v) { u.voice = v; u.lang = v.lang; } else u.lang = 'es-ES';
+    u.rate = T.rate; u.pitch = T.pitch; u.volume = clamp(S.settings.sfxVol, 0, 1);
+    u.onend = fin; u.onerror = fin;
+    const to = setTimeout(fin, 1500 + text.length * 140);
+    try { speechSynthesis.speak(u); } catch (e) { fin(); }
+  });
+}
 async function say(text, hold = 650) {
   const el = $('#msg'); el.textContent = ''; skipType = false;
   for (let i = 0; i < text.length; i++) {
@@ -3445,8 +3570,9 @@ function target(key) {
   if (p[0] === 'sel') return [S.settings.sel, p[1]];
   if (p[0] === 'itset') return [S.settings.items, p[1]];
   if (p[0] === 'it') { const it = S.settings.items.list[+p[1]]; return it ? [it, p[2]] : null; }
-  if (p[0] === 'tim' || p[0] === 'mm') {
-    const L = p[0] === 'tim' ? S.settings.title.musics : S.settings.menuMusics;
+  if (p[0] === 'in') return [S.settings.intro, p[1]];
+  if (p[0] === 'tim' || p[0] === 'mm' || p[0] === 'inm') {
+    const L = p[0] === 'tim' ? S.settings.title.musics : p[0] === 'inm' ? S.settings.intro.musics : S.settings.menuMusics;
     if (p[1] === 'new') { const o = { ref: null, refTrim: null }; L.push(o); return [o, 'ref']; }
     return L[+p[1]] ? [L[+p[1]], 'ref'] : null;
   }
@@ -3541,13 +3667,13 @@ function onTrimInput(el) {
   if (info) { drawWave($('canvas', box), info, trim); $('.dur', box).textContent = trimText(info, trim); }
   save();
 }
-const IMG_MAX = { 'itset:icon': 200, 'it:img': 200, 'sel:bg': 1400, 'sel:logo': 800, 'ti:bg': 1400, 'ti:logo': 800, 'f:img': 400, 'tf:img': 400, 'f:poseAtk': 400, 'f:poseHurt': 400, 'ar:bg': 1400, 'ar:platImg': 500 };
+const IMG_MAX = { 'in:img': 700, 'in:bg': 1400, 'itset:icon': 200, 'it:img': 200, 'sel:bg': 1400, 'sel:logo': 800, 'ti:bg': 1400, 'ti:logo': 800, 'f:img': 400, 'tf:img': 400, 'f:poseAtk': 400, 'f:poseHurt': 400, 'ar:bg': 1400, 'ar:platImg': 500 };
 function rerenderFor(key) {
-  if (/^(mm|tim):/.test(key)) {
-    [S.settings.menuMusics, S.settings.title.musics].forEach(L => { for (let i = L.length - 1; i >= 0; i--) if (!L[i].ref) L.splice(i, 1); });
+  if (/^(mm|tim|inm):/.test(key)) {
+    [S.settings.menuMusics, S.settings.title.musics, S.settings.intro.musics].forEach(L => { for (let i = L.length - 1; i >= 0; i--) if (!L[i].ref) L.splice(i, 1); });
     save(true);
   }
-  if (key.startsWith('tim:')) return renderTitleEditor();
+  if (key.startsWith('tim:') || key.startsWith('inm:') || key.startsWith('in:')) return renderTitleEditor();
   if (key.startsWith('itset:') || key.startsWith('it:')) { if ($('#itBox')) renderItemsEditor(); return; }
   if (key.startsWith('sel:')) { applySelSkin(); if ($('#selBox')) renderSelEditor(); return; }
   if (key.startsWith('mm:')) {
@@ -3618,7 +3744,7 @@ function editorCommon(root) {
     if (b.dataset.act === 'listen') {
       if (previewAudio && previewAudio._key === key && !previewAudio.paused) return stopPreviewAudio();
       stopPreviewAudio();
-      const vol = (key === 'ar:music' || key === 'set:winMusic' || /^(tim|mm):/.test(key)) ? S.settings.musicVol : S.settings.sfxVol;
+      const vol = (key === 'ar:music' || key === 'set:winMusic' || /^(tim|mm|inm):/.test(key)) ? S.settings.musicVol : S.settings.sfxVol;
       previewAudio = playClip(t[0][t[1]], vol, t[0][t[1] + 'Trim'], true);
       if (previewAudio) previewAudio._key = key;
       return;
@@ -4387,7 +4513,7 @@ const PEER_OPTS = (() => {
 const O = { phase: 'idle', role: null, code: '', peer: null, conns: {}, hostConn: null, pid: null, name: '',
   players: [], challenges: {}, matches: {}, tour: null, ver: 0, sig: '',
   lobby: null, roster: null, incoming: null, match: null, myTeam: [], deferStart: null, lastGid: null, busy: false, msg: '', savedStatus: null };
-const FMT_LABEL = { single: '👤 1 vs 1', double: '👥 2 vs 2', triple: '🔁 3 vs 3 (relevos)' };
+const FMT_LABEL = { single: '👤 1 vs 1', double: '👥 2 vs 2', triple: '🔁 3 vs 3 (relevos)', rnd1: '🎲 Aleatorio 1 vs 1', rnd3: '🎲 Aleatorio 3 vs 3' };
 const fmtN = f => FMT_N[f] || 1;
 const rosterSig = () => { const t = JSON.stringify({ f: S.fighters, a: S.arenas, s: S.settings.status, i: S.settings.items }); let h = 0; for (let i = 0; i < t.length; i++) h = (h * 31 + t.charCodeAt(i)) | 0; return t.length + ':' + h; };
 const randCode = () => { const a = 'abcdefghjkmnpqrstuvwxyz23456789'; return Array.from({ length: 4 }, () => a[Math.floor(Math.random() * a.length)]).join(''); };
@@ -4454,10 +4580,11 @@ async function refreshRosterIfChanged() {
 }
 function createMatch(a, b, format, arenaId, tourRef) {
   const m = { mid: uid(), a, b, format, arenaId, teams: [null, null], started: false, done: false, winner: null, tourRef: tourRef || null };
+  if (isRnd(format)) m.rnd = drawTeams(S.fighters, fmtN(format)).map(t => t.map(f => f.id));
   O.matches[m.mid] = m;
   [a, b].forEach(pid => { const p = pl(pid); if (p) p.busy = m.mid; });
   Object.keys(O.challenges).forEach(k => { const c = O.challenges[k]; if ([a, b].includes(c.from) || [a, b].includes(c.to)) delete O.challenges[k]; });
-  [a, b].forEach((pid, side) => toClient(pid, { t: 'match', mid: m.mid, side, opp: pname(side ? a : b), format, arenaId, tour: !!tourRef }));
+  [a, b].forEach((pid, side) => toClient(pid, { t: 'match', mid: m.mid, side, opp: pname(side ? a : b), format, arenaId, tour: !!tourRef, rteams: m.rnd || null }));
   if (tourRef) { const x = O.tour.rounds[tourRef.r][tourRef.i]; x.mid = m.mid; }
   broadcastLobby();
   return m;
@@ -4465,7 +4592,7 @@ function createMatch(a, b, format, arenaId, tourRef) {
 async function startMatch(m) {
   m.started = true;
   await refreshRosterIfChanged();
-  const sm = { t: 'mstart', mid: m.mid, gid: uid(), seed: Math.floor(Math.random() * 4294967296), format: m.format, arenaId: m.arenaId, teams: m.teams, ver: O.ver };
+  const sm = { t: 'mstart', mid: m.mid, gid: uid(), seed: Math.floor(Math.random() * 4294967296), format: m.format, arenaId: m.arenaId, teams: m.teams, bags: m.bags || null, ver: O.ver };
   [m.a, m.b].forEach(pid => toClient(pid, sm));
 }
 function finishMatch(m, winnerPid, why) {
@@ -4549,9 +4676,11 @@ function onServer(from, d) {
   if (!m || m.done || (from !== m.a && from !== m.b)) return;
   const side = from === m.a ? 0 : 1, other = side ? m.a : m.b;
   if (d.t === 'mpick' && !m.started) {
-    const n = fmtN(m.format), team = (Array.isArray(d.team) ? d.team : []).map(String).filter(id => getF(id)).slice(0, n);
+    const n = fmtN(m.format), team = m.rnd ? m.rnd[side] : (Array.isArray(d.team) ? d.team : []).map(String).filter(id => getF(id)).slice(0, n);
     if (team.length !== n) return;
     m.teams[side] = team;
+    { const L = S.settings.items.list, n = Math.min(S.settings.items.pick || 3, L.length); m.bags = m.bags || [null, null];
+      m.bags[side] = validBag((Array.isArray(d.items) ? d.items : []).map(String), L, n); }
     [m.a, m.b].forEach(pid => toClient(pid, { t: 'mstate', mid: m.mid, teams: m.teams }));
     if (m.teams[0] && m.teams[1]) startMatch(m);
     return;
@@ -4597,9 +4726,10 @@ function onClient(d) {
   if (d.t === 'challenged') return showChallenge(d);
   if (d.t === 'match') {
     closeChallengeModal();
-    O.match = { mid: d.mid, side: d.side, opp: d.opp, format: d.format, arenaId: d.arenaId, tour: d.tour, teams: [null, null], ready: false };
+    O.myBagSel = null;
+    O.match = { mid: d.mid, side: d.side, opp: d.opp, format: d.format, arenaId: d.arenaId, tour: d.tour, teams: [null, null], ready: false, rteams: Array.isArray(d.rteams) ? d.rteams : null };
     const list = myList(), n = fmtN(d.format);
-    O.myTeam = list.slice(0, n).map(f => f.id);
+    O.myTeam = O.match.rteams ? O.match.rteams[d.side].slice() : list.slice(0, n).map(f => f.id);
     while (O.myTeam.length < n && list.length) O.myTeam.push(list[0].id);
     sfx('appear'); toast(`⚔️ ¡Combate contra ${d.opp}!`);
     B.mode = 'online';
@@ -4686,6 +4816,17 @@ function pickGrid(list, chosen, n, locked) {
       <img src="${esc(src(f.img))}" alt=""><b>${esc(f.name)}</b><small>PS ${f.hp} · ATQ ${f.atk} · DEF ${f.def} · VEL ${f.spd}</small></button>`;
   }).join('')}</div>`;
 }
+function hostItems() { return O.role === 'host' ? S.settings.items : ((O.roster && O.roster.items) || { on: false, list: [] }); }
+function bagPicker(locked) {
+  const I = hostItems(); if (!I.on || !I.list.length) return '';
+  const n = Math.min(I.pick || 3, I.list.length);
+  if (!O.myBagSel) {
+    const byName = (S.settings.myBag || []).map(id => (S.settings.items.list.find(it => it.id === id) || {}).name).filter(Boolean);
+    O.myBagSel = validBag(I.list.filter(it => byName.includes(it.name)).map(it => it.id), I.list, n);
+  }
+  return `<h3 class="sub" style="margin-top:14px">${esc(I.label || 'Mochila')} · elige ${n}</h3><div class="on-team">${I.list.map(it => { const on = O.myBagSel.includes(it.id);
+    return `<button type="button" class="btn sm ${on ? 'primary' : ''}" data-obag="${it.id}" ${locked ? 'disabled' : ''} title="${esc(itemInfo(it))}">${on ? '✔ ' : ''}${esc(it.name)} ×${it.qty}</button>`; }).join('')}</div>`;
+}
 function bracketHTML(T) {
   if (!T) return '';
   const nm = (x, k) => x[k] ? `<span class="${x.w === k ? 'tw' : x.w ? 'tl' : ''}">${esc(x[k])}</span>` : '<span class="muted">— pase directo —</span>';
@@ -4714,8 +4855,8 @@ function renderOnline() {
         <div class="on-card" style="margin-top:14px;text-align:center"><h3>⚔️ ${esc(O.name || 'Tú')} vs ${esc(M.opp)}</h3>
           <p class="note">${FMT_LABEL[M.format]}${ar ? ' · ' + esc(ar.name) : ''}${M.tour ? ' · 🏆 Torneo' : ''}</p></div>
         ${list.length ? `<div class="on-grid" style="margin-top:14px">
-          <div><h3 class="sub">Tu equipo · elige ${n}${n === 3 ? ' (salen en ese orden)' : ''}</h3>${pickGrid(list, O.myTeam, n, locked)}</div>
-          <div><h3 class="sub">Equipo de ${esc(M.opp)}</h3><div class="on-card"><div class="on-team">${oppTeam ? teamThumbs(oppTeam, list) : '<span class="muted small">Eligiendo…</span>'}</div></div>
+          <div>${M.rteams ? `<h3 class="sub">🎲 Tu equipo (sorteado)</h3><div class="on-card"><div class="on-team">${teamThumbs(M.rteams[M.side], list)}</div></div>` : `<h3 class="sub">Tu equipo · elige ${n}${n === 3 ? ' (salen en ese orden)' : ''}</h3>${pickGrid(list, O.myTeam, n, locked)}`}${bagPicker(locked)}</div>
+          <div><h3 class="sub">Equipo de ${esc(M.opp)}${M.rteams ? ' (sorteado)' : ''}</h3><div class="on-card"><div class="on-team">${M.rteams ? teamThumbs(M.rteams[1 - M.side], list) : oppTeam ? teamThumbs(oppTeam, list) : '<span class="muted small">Eligiendo…</span>'}</div></div>
             <p class="on-status ${oppTeam ? 'ok' : 'wait'}">${oppTeam ? '✔ Listo' : '⏳ Eligiendo equipo…'}</p></div>
         </div>
         <button class="big-btn" data-on="ready" ${locked || O.myTeam.length !== n ? 'disabled' : ''}>${locked ? 'ESPERANDO A ' + esc(M.opp.toUpperCase()) + '…' : '¡LISTO!'}</button>` : '<p class="note" style="text-align:center">Esperando los personajes del anfitrión…</p>'}
@@ -4793,7 +4934,8 @@ function launchOnline(sm) {
   O.msg = '';
   B.online = { side: O.match.side, mid: sm.mid, gid: sm.gid, turn: 0, acts: {}, mine: {}, hpAt: {}, waiting: false, ended: false, warned: false };
   showView('battle');
-  startBattle({ teams: [t0.map(clone), t1.map(clone)], arena, items: O.role === 'host' ? S.settings.items : ((O.roster && O.roster.items) || S.settings.items) });
+  O.myBagSel = null;
+  startBattle({ teams: [t0.map(clone), t1.map(clone)], arena, items: O.role === 'host' ? S.settings.items : ((O.roster && O.roster.items) || S.settings.items), bags: sm.bags || null });
 }
 const sendMatch = msg => { const o = B.online; if (o) toServer({ t: 'mmsg', mid: o.mid, msg }); };
 function onAct(d) {
@@ -4876,6 +5018,10 @@ window.addEventListener('beforeunload', () => {
 });
 
 $('#onlineArea').addEventListener('click', async e => {
+  const ob = e.target.closest('[data-obag]');
+  if (ob) { const I = hostItems(), n = Math.min(I.pick || 3, I.list.length), id = ob.dataset.obag; O.myBagSel = O.myBagSel || [];
+    if (O.myBagSel.includes(id)) O.myBagSel = O.myBagSel.filter(x => x !== id); else { O.myBagSel.push(id); while (O.myBagSel.length > n) O.myBagSel.shift(); }
+    sfx('select'); return renderOnline(); }
   const t = e.target.closest('[data-on],[data-oteam],[data-chal]'); if (!t) return;
   sfx('select');
   if (t.dataset.chal) return openChallengeDialog(t.dataset.chal, t.dataset.cname);
@@ -4886,7 +5032,7 @@ $('#onlineArea').addEventListener('click', async e => {
     return renderOnline();
   }
   const act = t.dataset.on;
-  if (act === 'ready') { const M = O.match; if (M && O.myTeam.length === fmtN(M.format)) { M.teams[M.side] = O.myTeam.slice(); toServer({ t: 'mpick', mid: M.mid, team: O.myTeam }); renderOnline(); } return; }
+  if (act === 'ready') { const M = O.match; if (M && O.myTeam.length === fmtN(M.format)) { M.teams[M.side] = O.myTeam.slice(); toServer({ t: 'mpick', mid: M.mid, team: O.myTeam, items: O.myBagSel || [] }); renderOnline(); } return; }
   if (act === 'mquit') { const M = O.match; if (M) { toServer({ t: 'mquit', mid: M.mid }); O.match = null; renderOnline(); } return; }
   if (act === 'tour') return openTourDialog();
   if (act === 'tourCancel') {
@@ -5038,6 +5184,179 @@ document.addEventListener('click', e => {
    Arranque
    ========================================================= */
 /* =========================================================
+   Secuencia inicial: alguien te habla y eliges tu mochila
+   ========================================================= */
+const IN = { open: false, steps: [], i: 0, typing: false, timer: 0, sel: [], done: null, preview: false };
+const inPick = () => Math.min(S.settings.items.pick || 3, S.settings.items.list.length);
+const inNeedsChoice = () => S.settings.items.on && S.settings.items.list.length > 0;
+function validBag(ids, list, n) {
+  const out = (ids || []).filter(id => list.some(it => it.id === id)).slice(0, n);
+  for (const it of list) { if (out.length >= n) break; if (!out.includes(it.id)) out.push(it.id); }
+  return out;
+}
+/* foto pixelada: se reduce, se posteriza y se amplía sin suavizar */
+const PIX_CACHE = {};
+function pixelate(ref, w) {
+  const key = ref + '|' + w;
+  if (PIX_CACHE[key]) return Promise.resolve(PIX_CACHE[key]);
+  return loadImg(src(ref)).then(im => {
+    const W = Math.max(8, w), H = Math.max(8, Math.round(W * (im.naturalHeight || 1) / (im.naturalWidth || 1)));
+    const c = document.createElement('canvas'); c.width = W; c.height = H;
+    const x = c.getContext('2d', { willReadFrequently: true });
+    x.imageSmoothingEnabled = true; x.drawImage(im, 0, 0, W, H);
+    try {
+      const d = x.getImageData(0, 0, W, H), p = d.data;
+      for (let i = 0; i < p.length; i += 4) {
+        for (let k = 0; k < 3; k++) p[i + k] = Math.round(p[i + k] / 36) * 36;
+        p[i + 3] = p[i + 3] < 110 ? 0 : 255;
+      }
+      x.putImageData(d, 0, 0);
+    } catch (e) {}
+    return (PIX_CACHE[key] = c.toDataURL('image/png'));
+  }).catch(() => src(ref));
+}
+const inText = t => t.replace(/\{nombre\}/g, S.settings.intro.name)
+  .replace(/\{objetos\}/g, () => { const L = S.settings.items.list, names = S.settings.myBag.map(id => (L.find(it => it.id === id) || {}).name).filter(Boolean); return names.length ? joinY(names) : 'nada'; });
+function introSteps() {
+  const I = S.settings.intro, steps = [], choice = inNeedsChoice();
+  I.texts.forEach((t, k) => { if (k === I.choiceAfter && choice) steps.push({ choice: true }); if (t.trim()) steps.push({ text: t, k }); });
+  if (I.choiceAfter >= I.texts.length && choice) steps.push({ choice: true });
+  return steps;
+}
+function introMusic() {
+  const I = S.settings.intro;
+  if (S.settings.muted) return;
+  if (I.musics.length) Music.playList(I.musics, 'intro');
+  else if (I.useTitleMusic) titleMusic();
+}
+async function showIntro(done, preview) {
+  const I = S.settings.intro, el = $('#introScr');
+  IN.open = true; IN.done = done; IN.preview = !!preview; IN.steps = introSteps(); IN.i = -1;
+  IN.sel = validBag(S.settings.myBag, S.settings.items.list, inPick());
+  stopAllMusic(); stopPreviewAudio();
+  const pic = I.img ? await pixelate(I.img, I.pixel) : '';
+  const bg = I.bg ? `<img class="ts-bg pix" src="${esc(src(I.bg))}" alt="">` : '';
+  el.innerHTML = `<div class="in" style="--c1:${I.c1};--c2:${I.c2}">${bg}
+      ${pic ? `<div class="in-pic"><img src="${pic}" alt=""></div>` : ''}
+      <div class="in-choice" hidden></div>
+      <div class="in-box"><span class="in-name">${esc(I.name)}</span><p class="in-txt"></p><span class="in-next">▼</span></div>
+      <button class="in-skip" type="button">Saltar ⏭</button>
+    </div><button class="ts-snd" type="button" hidden>🔈 Toca aquí para activar la música</button>`;
+  el.hidden = false; document.body.classList.add('ts-lock');
+  introMusic();
+  /* los navegadores no dejan sonar nada hasta el primer toque: se espera a ese toque para empezar con sonido */
+  let locked = false;
+  try { locked = !S.settings.muted && ac().state !== 'running'; } catch (e) {}
+  if (locked) {
+    IN.waitStart = true;
+    $('#introScr .in-txt').textContent = '▶ Toca la pantalla para empezar';
+    $('#introScr .in-next').hidden = true;
+  } else introNext();
+}
+function stopVoice() { if (IN.voice) { try { IN.voice.pause(); } catch (e) {} IN.voice = null; } }
+function textBlip() {
+  const I = S.settings.intro, v = S.settings.sfxVol * I.blipVol / 100;
+  if (S.settings.muted || I.blip === 'none' || v <= 0) return;
+  if (I.blip === 'custom' && I.blipSnd) { const a = playClip(I.blipSnd, v, I.blipSndTrim); return a; }
+  try { tone('square', 820 + Math.random() * 120, 760, .045, .06 * v); } catch (e) {}
+}
+async function typeText(t, k0) {
+  const box = $('#introScr .in-txt'); if (!box) return;
+  IN.typing = true; box.textContent = ''; $('#introScr .in-next').hidden = true;
+  IN.full = t;
+  const I = S.settings.intro, voice = k0 != null && I['v' + k0];
+  stopVoice(); ttsStop();
+  const robot = !voice && S.settings.tts.intro && TTS_OK;
+  if (voice && !S.settings.muted) IN.voice = playClip(voice, S.settings.sfxVol, I['v' + k0 + 'Trim']);
+  else if (robot) speak(t);
+  for (let k = 0; k < t.length && IN.typing; k++) {
+    box.textContent = t.slice(0, k + 1);
+    if (!voice && !robot && k % 2 === 0 && /\S/.test(t[k])) textBlip();
+    await wait(30);
+  }
+  box.textContent = t; IN.typing = false;
+  const n = $('#introScr .in-next'); if (n) n.hidden = false;
+}
+function introNext() {
+  if (!IN.open) return;
+  if (IN.typing) { IN.typing = false; return; }
+  IN.i++;
+  const st = IN.steps[IN.i];
+  if (!st) return closeIntro();
+  if (st.choice) { stopVoice(); ttsStop(); if (S.settings.tts.intro) speak(inText(`Elige ${inPick()} objetos para tu mochila.`)); return showIntroChoice(); }
+  $('#introScr .in-choice').hidden = true;
+  const pic = $('#introScr .in-pic'); if (pic) pic.hidden = false;
+  typeText(inText(st.text), st.k);
+}
+function showIntroChoice() {
+  const n = inPick(), L = S.settings.items.list, box = $('#introScr .in-choice');
+  const pic = $('#introScr .in-pic'); if (pic) pic.hidden = true;
+  const draw = () => {
+    box.innerHTML = `<div class="in-grid">${L.map(it => {
+      const on = IN.sel.includes(it.id);
+      return `<button type="button" class="in-item ${on ? 'on' : ''}" data-init="${it.id}" style="--c:${it.color}">
+        ${it.img ? `<img src="${esc(src(it.img))}" alt="">` : '<span class="in-emo">🎒</span>'}<b>${esc(it.name)} ×${it.qty}</b><small>${esc(itemInfo(it))}</small>${on ? '<i>✔</i>' : ''}</button>`;
+    }).join('')}</div>
+    <button type="button" class="big-btn in-ok" ${IN.sel.length === n ? '' : 'disabled'}>¡LISTO! (${IN.sel.length}/${n})</button>`;
+  };
+  box.hidden = false; draw();
+  IN.drawChoice = draw;
+  IN.typing = false;
+  $('#introScr .in-txt').textContent = inText(`Elige ${n} objeto${n === 1 ? '' : 's'} para tu mochila.`);
+  $('#introScr .in-next').hidden = true;
+  IN.choosing = true; IN.choiceAt = Date.now();
+}
+async function closeIntro() {
+  const el = $('#introScr');
+  IN.open = false; IN.choosing = false; IN.typing = false; stopVoice(); ttsStop();
+  if (!IN.preview) { S.settings.intro.seen = true; save(); }
+  const keepTitle = Music.kind === 'title';
+  const an = el.firstElementChild && el.firstElementChild.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 450, fill: 'forwards' });
+  if (an) await an.finished.catch(() => {});
+  el.hidden = true; el.innerHTML = '';
+  if (!keepTitle) Music.stop();
+  document.body.classList.remove('ts-lock');
+  const d = IN.done; IN.done = null; if (d) d();
+}
+$('#introScr').addEventListener('click', e => {
+  if (!IN.open) return;
+  const snd = e.target.closest('.ts-snd');
+  if (snd) { e.stopPropagation(); snd.hidden = true; try { ac(); } catch (_) {} introMusic(); return; }
+  if (IN.waitStart) {
+    IN.waitStart = false;
+    try { ac(); } catch (_) {}
+    introMusic();
+    if (!e.target.closest('.in-skip')) return introNext();
+  }
+  if (e.target.closest('.in-skip')) {
+    IN.typing = false;
+    if (inNeedsChoice() && !IN.choosing && !(S.settings.myBag || []).length) { IN.i = IN.steps.findIndex(s => s.choice) - 1; return introNext(); }
+    if (!IN.choosing) return closeIntro();
+    return;
+  }
+  if (IN.choosing && Date.now() - (IN.choiceAt || 0) < 700) return;
+  const it = e.target.closest('[data-init]');
+  if (it) {
+    const id = it.dataset.init, n = inPick();
+    if (IN.sel.includes(id)) IN.sel = IN.sel.filter(x => x !== id);
+    else { IN.sel.push(id); while (IN.sel.length > n) IN.sel.shift(); }
+    sfx('select'); IN.drawChoice(); return;
+  }
+  if (e.target.closest('.in-ok')) {
+    if (IN.sel.length !== inPick()) return;
+    S.settings.myBag = IN.sel.slice(); save(true);
+    sfx('appear'); IN.choosing = false;
+    return introNext();
+  }
+  if (IN.choosing) return;
+  sfx('select'); introNext();
+});
+document.addEventListener('keydown', e => {
+  if (!IN.open || IN.choosing || !$('#modal').hidden) return;
+  if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopImmediatePropagation(); if (IN.waitStart) { IN.waitStart = false; try { ac(); } catch (_) {} introMusic(); } introNext(); }
+}, true);
+
+/* =========================================================
    Pantalla de inicio
    ========================================================= */
 const TS = { open: false, leaving: false, pick: null, prevView: 'battle', timer: 0 };
@@ -5089,11 +5408,12 @@ function showTitle() {
   const t = S.settings.title, el = $('#titleScr');
   const cur = $('.tab.on')?.dataset.view || 'battle';
   TS.prevView = cur === 'title' && TS.open ? TS.prevView : cur;
-  stopAllMusic(); stopPreviewAudio();
+  const keepMusic = Music.kind === 'title' && Music.el && !Music.el.paused;
+  if (!keepMusic) stopAllMusic(); stopPreviewAudio();
   TS.pick = null; TS.open = true; TS.leaving = false;
   el.innerHTML = titleHTML(t) + `<button class="ts-snd" type="button" hidden>🔈 Toca aquí para activar la música</button>`;
   el.hidden = false; document.body.classList.add('ts-lock');
-  titleMusic();
+  if (!keepMusic) titleMusic();
   clearTimeout(TS.timer);
   TS.timer = setTimeout(() => { if (TS.open && !TS.leaving && titleSilenced()) { const b = $('.ts-snd', el); if (b) b.hidden = false; } }, 800);
 }
@@ -5129,8 +5449,8 @@ $('.brand').addEventListener('click', () => showTitle());
 async function portadaPack() {
   const st = S.settings, t = clone(st.title);
   const pack = { app: 'pokemdk-portada', stamp: Date.now(), title: t, f1name: getF(t.f1)?.name || '', f2name: getF(t.f2)?.name || '',
-    menuMusics: st.menuMusics, sel: clone(st.sel), media: {} };
-  for (const id of usedMedia([t, st.menuMusics, st.sel])) { const v = MEDIA[id]; if (v) pack.media[id] = v instanceof Blob ? await blobToDataURL(v) : v; }
+    menuMusics: st.menuMusics, sel: clone(st.sel), intro: clone(st.intro), media: {} };
+  for (const id of usedMedia([t, st.menuMusics, st.sel, st.intro])) { const v = MEDIA[id]; if (v) pack.media[id] = v instanceof Blob ? await blobToDataURL(v) : v; }
   return pack;
 }
 async function saveFile(name, blob) {
@@ -5175,6 +5495,7 @@ async function loadPortada() {
     if (p.f2name) t.f2 = byName(p.f2name);
     S.settings.title = normTitle(t);
     if (p.sel) S.settings.sel = normSel(p.sel);
+    if (p.intro) { const seen = S.settings.intro.seen; S.settings.intro = normIntro(p.intro); S.settings.intro.seen = seen; }
     if ('menuMusics' in p) S.settings.menuMusics = normList(p.menuMusics);
     else if ('menuMusic' in p) S.settings.menuMusics = normList([{ ref: p.menuMusic, refTrim: p.menuMusicTrim }]);
     S.portadaStamp = p.stamp;
@@ -5190,7 +5511,50 @@ function renderTitleEditor() {
   const fopts = cur => `<option value="">— Ninguno —</option>` + S.fighters.map(f => opt(f.id, cur, esc(f.name))).join('');
   const txt = (k, label, max, cls = '') => `<label class="${cls}">${label}<input type="text" maxlength="${max}" value="${esc(t[k])}" data-ti="${k}"></label>`;
   const colr = (k, label) => `<label>${label}<input type="color" value="${t[k]}" data-ti="${k}"></label>`;
+  const I = S.settings.intro;
   $('#tForm').innerHTML = `
+  <div class="card">
+    <h3>🎙️ Secuencia inicial <button class="btn primary sm" data-act="inPlay">▶ Ver secuencia</button></h3>
+    <p class="tip">Antes de la portada, alguien te habla (como el profesor al empezar los juegos clásicos) y eliges los objetos de tu mochila. Se pasa tocando la pantalla.</p>
+    <div class="in-frame" id="inPrev"></div>
+    <div class="fields">
+      <label class="check"><input type="checkbox" data-in="enabled" ${I.enabled ? 'checked' : ''}> Mostrar la secuencia al abrir</label>
+      <label class="check"><input type="checkbox" data-in="once" ${I.once ? 'checked' : ''}> Solo la primera vez</label>
+    </div>
+    <div class="imgrow" style="margin:12px 0">
+      ${imgSlot('in:img', I.img, 'Foto de quien habla (se pixela)', { optional: true })}
+      <div class="fields">
+        <label class="full">Nombre de quien habla<input type="text" maxlength="20" value="${esc(I.name)}" data-in="name"></label>
+        ${statField('data-in', 'pixel', 'Tamaño del píxel (menos = más pixelado)', 16, 200, I.pixel, ' px')}
+        <label>Color del fondo<input type="color" value="${I.c1}" data-in="c1"></label>
+        <label>Color del centro<input type="color" value="${I.c2}" data-in="c2"></label>
+      </div>
+    </div>
+    <div class="sec-t">Los 6 textos</div>
+    <p class="note" style="margin-bottom:8px">Usa {nombre} para su nombre y {objetos} para los objetos que hayas elegido. Los textos vacíos se saltan.</p>
+    <div class="fields">
+      ${I.texts.map((t, k) => `<label class="full">Texto ${k + 1}<textarea rows="2" maxlength="200" data-in="t${k}">${esc(t)}</textarea></label>
+        <div class="full">${audioSlot('in:v' + k, I['v' + k], `🎤 Voz del texto ${k + 1} (opcional: suena al aparecer el texto)`, 'Sin voz: suena el sonido de las letras')}</div>`).join('')}
+      <label>Sonido de las letras<select data-in="blip">${opt('beep', I.blip, 'Pitido clásico')}${opt('custom', I.blip, 'Mi propio sonido')}${opt('none', I.blip, 'Ninguno')}</select></label>
+      ${statField('data-in', 'blipVol', 'Volumen de las letras', 0, 100, I.blipVol, '%')}
+      ${I.blip === 'custom' ? `<div class="full">${audioSlot('in:blipSnd', I.blipSnd, 'Sonido de cada letra (mejor un sonido muy corto)', 'Sube un sonido')}</div>` : ''}
+      <div class="full sec"><div class="sec-t">🗣️ Voz que lee los textos</div>
+        ${TTS_OK ? `<div class="fields">
+          <label class="check full"><input type="checkbox" data-tts="intro" ${S.settings.tts.intro ? 'checked' : ''}> Leer en voz alta los textos de la secuencia (los que no tengan voz grabada)</label>
+          <label class="full">Voz<select data-tts="voice"><option value="">Automática (voz de hombre si hay)</option>${ttsVoices().map(v => opt(v.voiceURI, S.settings.tts.voice, esc(v.name + ' · ' + v.lang))).join('')}</select></label>
+          <label><span class="stat-row">Velocidad<output>${S.settings.tts.rate.toFixed(2)}</output></span><input type="range" min="0.5" max="2" step="0.05" value="${S.settings.tts.rate}" data-tts="rate"></label>
+          <label><span class="stat-row">Tono (más bajo = más grave)<output>${S.settings.tts.pitch.toFixed(2)}</output></span><input type="range" min="0" max="2" step="0.05" value="${S.settings.tts.pitch}" data-tts="pitch"></label>
+          <div class="full arow"><button class="btn sm primary" data-act="ttsTest" type="button">▶ Probar voz</button><span class="note">Usa las voces de tu dispositivo; las de hombre salen primero en la lista.</span></div>
+        </div>` : '<p class="note">Este navegador no tiene voz automática.</p>'}
+      </div>
+      <label class="full">Cuándo se eligen los objetos de la mochila<select data-in="choiceAfter">${[0, 1, 2, 3, 4, 5, 6].map(n => opt(n, I.choiceAfter, n === 0 ? 'Al principio' : n === 6 ? 'Al final' : 'Después del texto ' + n)).join('')}</select></label>
+    </div>
+    <div class="imgrow" style="margin-top:12px">
+      ${imgSlot('in:bg', I.bg, 'Fondo (opcional)', { optional: true })}
+      <div><span class="lbl">Música de la secuencia</span>${musicList('inm', I.musics, I.useTitleMusic ? 'Sin canciones: sonará la música de la portada.' : 'Sin música.')}
+        <label class="check" style="margin-top:8px"><input type="checkbox" data-in="useTitleMusic" ${I.useTitleMusic ? 'checked' : ''}> Si no hay canciones, usar la música de la portada</label></div>
+    </div>
+  </div>
   <div class="card">
     <h3>Pantalla de inicio <span class="arow"><button class="btn sm" data-act="tsPhone">${edT.phone ? '🖥️ Ver horizontal' : '📱 Ver como móvil'}</button><button class="btn primary sm" data-act="tsFull">▶ Ver a pantalla completa</button></span></h3>
     <div class="ts-frame${edT.phone ? ' phone' : ''}" id="tsPrev"></div>
@@ -5268,11 +5632,38 @@ function renderTitleEditor() {
     </div>
     <p class="note" style="margin-top:8px">Los navegadores no dejan sonar música hasta que tocas la pantalla: si no se oye, aparecerá un botón para activarla.</p>
   </div>`;
-  paintTitlePrev();
+  paintTitlePrev(); paintIntroPrev();
   hydrateTrims($('#tForm'));
 }
+async function paintIntroPrev() {
+  const box = $('#inPrev'), I = S.settings.intro; if (!box) return;
+  const pic = I.img ? await pixelate(I.img, I.pixel) : '';
+  if (!box.isConnected) return;
+  box.innerHTML = `<div class="in" style="--c1:${I.c1};--c2:${I.c2};cursor:default">${I.bg ? `<img class="ts-bg pix" src="${esc(src(I.bg))}" alt="">` : ''}${pic ? `<div class="in-pic" style="animation:none"><img src="${pic}" alt=""></div>` : ''}<div class="in-box"><span class="in-name">${esc(I.name)}</span><p class="in-txt">${esc(inText((I.texts.find(t => t.trim()) || '')))}</p><span class="in-next">▼</span></div></div>`;
+}
 function paintTitlePrev() { const p = $('#tsPrev'); if (p) p.innerHTML = titleHTML(S.settings.title, true); }
+function onIntroField(e) {
+  const el = e.target, I = S.settings.intro, k = el.dataset.in;
+  if (el.type === 'checkbox') I[k] = el.checked;
+  else if (k === 'blipVol') { I.blipVol = num(el.value, I.blipVol, 0, 100); const o = el.closest('label')?.querySelector('output'); if (o) o.textContent = I.blipVol + '%'; }
+  else if (k === 'pixel') { I.pixel = num(el.value, I.pixel, 16, 200); const o = el.closest('label')?.querySelector('output'); if (o) o.textContent = I.pixel + ' px'; }
+  else if (k === 'choiceAfter') I.choiceAfter = num(el.value, 4, 0, 6);
+  else if (/^t\d$/.test(k)) I.texts[+k[1]] = String(el.value).slice(0, 200);
+  else if (k === 'name') I.name = String(el.value).slice(0, 20) || 'Profesor';
+  else I[k] = el.value;
+  if (k === 'useTitleMusic' || k === 'blip') { save(); return renderTitleEditor(); }
+  clearTimeout(edT.itm); edT.itm = setTimeout(paintIntroPrev, k === 'pixel' ? 120 : 200);
+  save();
+}
 function onTitleField(e) {
+  if (e.target.dataset && e.target.dataset.tts) {
+    const el = e.target, T = S.settings.tts, k = el.dataset.tts;
+    if (el.type === 'checkbox') T[k] = el.checked;
+    else if (k === 'voice') T.voice = el.value;
+    else { T[k] = clamp(Number(el.value), k === 'rate' ? .5 : 0, 2); const o = el.closest('label')?.querySelector('output'); if (o) o.textContent = T[k].toFixed(2); }
+    return save();
+  }
+  if (e.target.dataset && e.target.dataset.in) return onIntroField(e);
   const el = e.target; if (el.type === 'file' || el.dataset.trim || !el.dataset.ti) return;
   const t = S.settings.title, k = el.dataset.ti;
   if (el.type === 'checkbox') t[k] = el.checked;
@@ -5288,6 +5679,8 @@ editorCommon($('#tForm'));
 $('#tForm').addEventListener('click', e => {
   const b = e.target.closest('[data-act]'); if (!b) return;
   if (b.dataset.act === 'tsFull') showTitle();
+  else if (b.dataset.act === 'inPlay') showIntro(() => showView('title'), true);
+  else if (b.dataset.act === 'ttsTest') speak(inText(S.settings.intro.texts.find(t => t.trim()) || '¡Hola! Bienvenido a POKEMDK.'));
   else if (b.dataset.act === 'tsPublish') publishPortada();
   else if (b.dataset.act === 'tsPhone') { edT.phone = !edT.phone; renderTitleEditor(); }
 });
@@ -5347,7 +5740,9 @@ $('#tForm').addEventListener('click', e => {
   paintSound();
   renderSetup();
   applySelSkin();
-  if (S.settings.title.enabled) showTitle(); else playMenuMusic();
+  const afterIntro = () => { if (S.settings.title.enabled) showTitle(); else playMenuMusic(); };
+  const I = S.settings.intro;
+  if (I.enabled && !(I.once && I.seen)) showIntro(afterIntro); else afterIntro();
 })();
 if ('serviceWorker' in navigator && /^https?:/.test(location.protocol)) {
   /* busca versión nueva en cada apertura; si la hay, recarga una vez para usarla */
